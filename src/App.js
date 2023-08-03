@@ -15,6 +15,7 @@ import { getFirestore, collection, doc, addDoc, setDoc, getDocs } from "firebase
 import { db } from './firebase';
 import { saveRaceToDataBase,saveRacerListToDataBase } from './Database'
 import FrontPage from './FrontPage';
+import ScannerPage from './ScannerPage';
 
 function App() {
 
@@ -74,7 +75,8 @@ function App() {
           <Route path="/races" element={<ListRacesAsCards racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />
           <Route path="/results" element={<Results logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSetting={setRaceSettings} />} />
           <Route path="/competitorlist" element={<Competitorlist racers={racers} setRacers={setRacers} raceSettings={raceSettings} />} />          
-          <Route path="/createrace" element={<Createrace racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} showMenu={false} />} />
+          <Route path="/createrace" element={<Createrace racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} showMenu={false} />} />          
+          <Route path="/scanner" element={<ScannerPage/>} />          
         </Routes>
       </BrowserRouter>
     </>

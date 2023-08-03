@@ -9,7 +9,7 @@ export default function Menu(props) {
   return (
     <Navbar collapseOnSelect expand="lg" bg="dark" variant="dark" className="p-3">
       <Container >
-        //<Navbar.Brand href="/roine">RoinE</Navbar.Brand>
+        <Navbar.Brand href="/roine">RoinE</Navbar.Brand>
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
         <Navbar.Collapse id="responsive-navbar-nav">
           <Nav className="me-auto">
@@ -37,6 +37,12 @@ export default function Menu(props) {
                 Results
               </Link>
             </Nav.Link>                          
+            <Nav.Link>
+              {' '}
+              <Link className="text-decoration-none text-white" to="/scanner">
+                Scanner
+              </Link>
+            </Nav.Link>     
           </Nav>
           <Nav className="gap-2">
             <Nav.Link className="btn btn-primary" href="#">Login</Nav.Link>
