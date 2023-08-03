@@ -56,7 +56,7 @@ function App() {
       let didWeManageTosSaveRace = saveRaceToDataBase(raceSettings)
       //console.log('Saving race done')
       //console.log(racers,raceSettings.racerlistid)
-      let didWeManageTosSaveRaceList = saveRacerListToDataBase(racers,raceSettings.racerlistid)
+      let didWeMana,geTosSaveRaceList = saveRacerListToDataBase(racers,raceSettings.racerlistid)
       //console.log('Useeffect saving done')
     } else { 
       //console.log('USEEFFECT called but nothing was done', raceSettings, prevraceSettings.current) 
@@ -66,11 +66,11 @@ function App() {
 
   return (
     <>
-      <BrowserRouter>      
-        {raceSettings.state == 'running'? '' : <Menu />}
+      <BrowserRouter basename = '/roine' >      
+        {raceSettings.state == 'running' ? '' : <Menu />}
         <Routes>
           <Route path="/" element={<FrontPage />} />
-          <Route path="/scoreboard" element={<Scoreboard logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />          
+          <Route path="//scoreboard" element={<Scoreboard logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />          
           <Route path="/races" element={<ListRacesAsCards racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />
           <Route path="/results" element={<Results logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSetting={setRaceSettings} />} />
           <Route path="/competitorlist" element={<Competitorlist racers={racers} setRacers={setRacers} raceSettings={raceSettings} />} />          
