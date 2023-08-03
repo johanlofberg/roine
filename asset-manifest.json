@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/roine/static/css/main.f90d64fa.css",
-    "main.js": "/roine/static/js/main.5b26f1b4.js",
+    "main.js": "/roine/static/js/main.31d6c4c0.js",
     "static/media/B.jpg": "/roine/static/media/B.f53624f161a1f09b84a1.jpg",
     "static/media/C.jpg": "/roine/static/media/C.348d128ac6a6daa09df5.jpg",
     "static/media/P3.jpg": "/roine/static/media/P3.612fe79f15975166c2cc.jpg",
@@ -10,10 +10,10 @@
     "static/media/P2.jpg": "/roine/static/media/P2.e64b16dfa1e9dc88cb29.jpg",
     "index.html": "/roine/index.html",
     "main.f90d64fa.css.map": "/roine/static/css/main.f90d64fa.css.map",
-    "main.5b26f1b4.js.map": "/roine/static/js/main.5b26f1b4.js.map"
+    "main.31d6c4c0.js.map": "/roine/static/js/main.31d6c4c0.js.map"
   },
   "entrypoints": [
     "static/css/main.f90d64fa.css",
-    "static/js/main.5b26f1b4.js"
+    "static/js/main.31d6c4c0.js"
   ]
 }
