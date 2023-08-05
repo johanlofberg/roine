@@ -6,55 +6,50 @@ import { Card, CardHeader } from '@mui/material';
 //import CardHeader from "@mui/material/CardHeader";
 //import Card from 'react-bootstrap/Card';
 //import CardHeader from "@mui/material/CardHeader";
+import { faArrowDown, faBinoculars, faEye, faEyeSlash, faHouseTsunami, faList, faSortAlphaAsc, faSortAlphaDesc, faSortNumericAsc, faSortNumericDesc, faTableCells } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { AppBar, Avatar, Badge, Box, Button, CardActionArea, Grid, Menu, MenuItem, Toolbar, Tooltip } from '@mui/material';
 import IconButton from "@mui/material/IconButton";
 import { blue, green, red } from "@mui/material/colors";
-import { faArrowDown, faBinoculars, faEye, faEyeSlash, faHouseTsunami, faList, faSortAlphaAsc, faSortAlphaDesc, faSortNumericAsc, faSortNumericDesc, faTableCells } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
-import { FaCopy, FaEdit, FaFlagCheckered, FaStopwatch, FaTrash } from 'react-icons/fa';
+import { FaCopy, FaEdit, FaFlagCheckered, FaTrash } from 'react-icons/fa';
 // Hoom, get border with mui
+import { doc, getDoc } from "firebase/firestore";
 import { ButtonGroup } from 'react-bootstrap';
+import { useLocation } from "react-router-dom";
+import { saveRaceToDataBase, saveRaceLogToDataBase, saveRacerListToDataBase } from './Database';
 import Rightviewmenu from './Rightviewmenu';
+import { db } from './firebase';
 import relativemilliSecondsToTimeStr, { niceAbsoluteTimeFormat } from './myTimeDisplays';
-import uniqueID from './uniqueID';
-import { normalizeRacers } from "./myUtilities";
-import { saveRaceToDataBase, saveRacerListToDataBase } from './Database';
+import { deepClone, normalizeRacer, normalizeRacers } from "./myUtilities";
+import { uniqueID } from './myUtilities'
 
 export default function Scoreboard(props) {
 
     const [sortField, setsortField] = useState('number');
     const [sortDirection, setsortDirection] = useState(1);
-    const [viewModel, setviewModel] = useState({ state: 1 });
     const [hideCards, sethideCards] = useState(false);
     const [viewedRacer, setviewedRacer] = useState(null);
+    const [NFCReadMessage, setNFCReadMessage] = useState('')
+    //const [scanState, setScanState] = useState('')
+    const [raceSetup, setraceSetup] = useState([])
+    const [allCompetitors, setAllCompetitors] = useState([])
+    const [viewType, setviewType] = useState({ 'state': 0 });
+    const [dataBaseLoaded, setdataBaseLoaded] = useState(false);
+    const [nfcState, setnfcState] = useState('free');
 
     const [anchorRacerOptions, setanchorRacerOptions] = useState([]);
 
-    function terminateRace() {
-        // TOD: If this is forcefully called, we should mark all non-started and non-finished as DNS/DNF
-
-        const theRace = {...props.raceSettings, state:'finished'}       
-        props.setRaceSettings(theRace)        
-        const finishLog = { id: uniqueID(), time: (new Date() + 1), racerID: '', eventtype: 'endrace', comment: 'Slut på tävling', associatedID: '' }
-        props.setlogLaps([...props.logLaps, finishLog]);        
-
-//        let didWeManageTosSaveParticpants = saveRacerListToDataBase(normalizeRacers(props.racers), props.raceSettings.racerlistid)
-        //let didWeManageTosSaveRace = saveRaceToDataBase(props.raceSettings)
-
-        //if (didWeManageTosSaveParticpants && didWeManageTosSaveRace) {            
-            //const saveLog = { id: uniqueID(), time: (new Date()), racerID: '', eventtype: 'savedrace', comment: 'Tävling sparad i databas', associatedID: '' }
-            //props.setlogLaps([...props.logLaps, saveLog]);
-        //}
-    }
-
     function estimateSingleRacerLapTime(racer, now) {
 
+        console.log('Estimating time')
+        console.log(racer)
         if (!(racer.dns || racer.dnf || racer.finished) && (racer.lapmarkings.length > 0)) {
             let lastLapTime = 0
             if (racer.lapmarkings.length === 1) {
                 // Started but not lapped
+                console.log('Guessing 5')
                 lastLapTime = 5 * 60 * 1000
             } else {
                 lastLapTime = racer.lapmarkings.at(-1).time - racer.lapmarkings.at(-2).time
@@ -75,19 +70,16 @@ export default function Scoreboard(props) {
         } else return 999
     }
 
-    function updateNext() {
-        return //FIXME
-        let racers = props.racers
+    function updateNext() {        
+        let racers = deepClone(allCompetitors)
         let now = new Date()
-        // create a new Date object, using the adjusted time        
-        racers = racers.map((racer) => { racer.next = estimateSingleRacerLapTime(racer, now) })
-        props.setRacers(racers)
+        racers.forEach((racer) => { racer.next = estimateSingleRacerLapTime(racer, now) })
+        setAllCompetitors(racers)
     }
 
-    function clickViewModel(event) {
-        let newviewModel = viewModel;
-        newviewModel.state = (newviewModel.state + 1) % 3
-        setviewModel(newviewModel)
+
+    function clickViewType(event) {
+        setviewType({ ...viewType, state: (viewType.state + 1) % 3 })
     }
 
     function changeHideMode(event) {
@@ -96,14 +88,14 @@ export default function Scoreboard(props) {
     }
 
     function computeRequiredLaps(racer) {
-        return props.raceSettings.classes.find((raceClass) => raceClass.name.toLowerCase() === racer.class.toLowerCase()).laps;
+        return raceSetup.classes.find((raceClass) => raceClass.name.toLowerCase() === racer.class.toLowerCase()).laps;
     }
 
     function deleteEvent(params) {
 
-        let theRacerIndex = props.racers.findIndex((x) => (x.id === params.row.racerID));
-        let theRacer = props.racers[theRacerIndex]
-        let theRacers = props.racers
+        let theRacerIndex = allCompetitors.findIndex((x) => (x.id === params.row.racerID));
+        let theRacer = allCompetitors[theRacerIndex]
+        let theRacers = allCompetitors
 
         if (params.row.eventtype === 'dns') {
             theRacers[theRacerIndex].dns = false
@@ -125,37 +117,42 @@ export default function Scoreboard(props) {
             let theNewRacerLog = theRacer.lapmarkings.filter((x) => x.id !== params.row.id)
             theRacers[theRacerIndex].lapmarkings = theNewRacerLog;
         }
-        props.setRacers(theRacers)
+        setAllCompetitors(theRacers)
         props.setlogLaps(props.logLaps.filter((x) => x.id !== params.row.id))
     }
 
     function clickedCard(event, racer) {
 
-        if ((props.raceSettings.state !== 'finished') && (racer.dns || racer.dnf || racer.finished) === false) {
+        console.clear()
+        console.log('THE LOGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG')
+        console.log(props.logLaps)
 
-            if (props.raceSettings.state ===  'planning') {
-                console.log('Hey, race started!')
-                props.setRaceSettings({...props.raceSettings, state:'running'})
-            }
+        if ((raceSetup.state !== 'finished') && (racer.dns || racer.dnf || racer.finished) === false) {
+
+            let OldRacers = deepClone(allCompetitors);
+            let OldRaceSetup = deepClone(raceSetup);
+            let OldLog = deepClone(props.logLaps);
+
+            // Ok, we are definitionally racing
+            OldRaceSetup.state = 'running'
 
             let now = new Date();
             let eventID = uniqueID();
 
-            let index = props.racers.findIndex(x => x.id === racer.id);
-            let OldRacers = props.racers;
+            let index = OldRacers.findIndex(x => x.id === racer.id);
+
             let newEvent = { id: eventID, time: now };
             OldRacers[index].lapmarkings.push(newEvent)
 
-            const requiredLaps = computeRequiredLaps(racer)
-
+            const requiredLaps = computeRequiredLaps(OldRacers[index])
             const numberLaps = OldRacers[index].lapmarkings.length - 1
+
             if (numberLaps === requiredLaps) {
                 OldRacers[index].next = 1002
                 OldRacers[index].finished = true
             } else {
-                OldRacers[index].next = estimateSingleRacerLapTime(racer, now)
+                OldRacers[index].next = estimateSingleRacerLapTime(OldRacers[index], now)
             }
-            props.setRacers(OldRacers)
 
             let theComment = 'Start'
             const theRacerLaps = OldRacers[index].lapmarkings
@@ -164,33 +161,49 @@ export default function Scoreboard(props) {
                 theComment = 'Passering varv ' + numberLaps + ' på ' + relativemilliSecondsToTimeStr(driveTimeInMilliSeconds, 'short')
             }
             const passageLog = { id: eventID, time: now, racerID: racer.id, eventtype: (numberLaps === 0 ? 'start' : 'timecheck'), comment: theComment };
-            let newLog = null
+
             if (OldRacers[index].finished) {
                 // Add a related stamp which simply says racer finished the race. In this stamp, we point to the actual event
                 let associatedID = eventID
                 eventID = uniqueID();
                 // FIXME: hack to ensure synced in log list
-                now = new Date(Date.now() + 1000);
+                now = new Date();
                 const totaldriveTimeInMilliSeconds = (theRacerLaps[theRacerLaps.length - 1].time - theRacerLaps[0].time)
                 theComment = 'Målgång, totaltid ' + relativemilliSecondsToTimeStr(totaldriveTimeInMilliSeconds, 'short')
                 const goalLog = { id: eventID, time: now, racerID: racer.id, eventtype: 'finished', comment: theComment, associatedID: associatedID }
-                newLog = [...props.logLaps, passageLog, goalLog];
+                OldLog = [...OldLog, passageLog, goalLog]
+
             } else {
-                newLog = [...props.logLaps, passageLog];
+                OldLog = [...OldLog, passageLog]
             }
-            props.setlogLaps(newLog);
 
-
-            console.log('Computing finishing status')            
-            const allFinished = props.racers.reduce((accumulator, racer) => {
+            console.log('Computing finishing status')
+            const allFinished = OldRacers.reduce((accumulator, racer) => {
                 return accumulator && (racer.dnf || racer.dns || racer.finished)
             }, true);
             if (allFinished) {
                 console.log('Terminating race')
-                terminateRace()
-            }            
+                OldRaceSetup.state = 'finished'
+                const finishLog = { id: uniqueID(), 'time': (new Date()), racerID: 'system', eventtype: 'endrace', comment: 'Slut på tävling', associatedID: '' }
+                OldLog = [...OldLog, finishLog] //  props.setlogLaps([...deepClone(props.logLaps), finishLog]);
+                let didWeManageTosSaveParticpants = saveRacerListToDataBase(normalizeRacers(OldRacers), OldRaceSetup.racerlistid)
+                let didWeManageTosSaveRace = saveRaceToDataBase(OldRaceSetup)
+                let didWeManageTosSaveRaceLog = saveRaceLogToDataBase(OldLog, OldRaceSetup.logid)
+
+                if (didWeManageTosSaveParticpants && didWeManageTosSaveRace && didWeManageTosSaveRaceLog) {
+                    const saveLog = { id: uniqueID(), time: (new Date()), racerID: 'system', eventtype: 'savedrace', comment: 'Tävling sparad i databas', associatedID: '' }
+                    OldLog = [...OldLog, saveLog];
+                } else {
+                    console.log('Failure in saving final data')
+                }
+            }
+            // Bulk update, hopefully just one render...??!?
+            setAllCompetitors(OldRacers)
+            setraceSetup(OldRaceSetup)
+            props.setlogLaps(OldLog);
         }
     }
+
 
     function createLapTimeInfoString(racer) {
 
@@ -226,19 +239,18 @@ export default function Scoreboard(props) {
     }
 
     function onCloseRacerOptions(event, racer, index, what) {
-
         event.preventDefault()
         event.stopPropagation()
 
-        let temp = new Array(props.racers.length);
+        let temp = new Array(allCompetitors.length);
         if (index === undefined) {
             temp.fill(null);
         } else {
             temp = anchorRacerOptions
             temp[index] = null
 
-            let theRacerIndex = props.racers.findIndex((x) => (x.id === racer.id));
-            let allRacers = props.racers;
+            let theRacerIndex = allCompetitors.findIndex((x) => (x.id === racer.id));
+            let allRacers = allCompetitors;
             let now = new Date();
             const eventID = uniqueID();
             switch (String(what)) {
@@ -251,7 +263,7 @@ export default function Scoreboard(props) {
                     if ((allRacers[theRacerIndex].lapmarkings.length > 0) && (allRacers[theRacerIndex].finished === false)) {
                         allRacers[theRacerIndex].dnf = true
                         allRacers[theRacerIndex].next = 1001
-                        props.setRacers(allRacers)
+                        setAllCompetitors(allRacers)
                         props.setlogLaps([...props.logLaps, { id: eventID, time: now, racerID: racer.id, eventtype: 'dnf', comment: 'DNF' }]);
                     }
                     break
@@ -259,20 +271,20 @@ export default function Scoreboard(props) {
                     if (allRacers[theRacerIndex].lapmarkings.length === 0) {
                         allRacers[theRacerIndex].dns = true
                         allRacers[theRacerIndex].next = 1000
-                        props.setRacers(allRacers)
+                        setAllCompetitors(allRacers)
                         props.setlogLaps([...props.logLaps, { id: eventID, time: now, racerID: racer.id, eventtype: 'dns', comment: 'DNS' }]);
                     }
                     break
                 case 'remove dns':
                     allRacers[theRacerIndex].dns = false
                     allRacers[theRacerIndex].next = 0
-                    props.setRacers(allRacers)
+                    setAllCompetitors(allRacers)
                     props.setlogLaps([...props.logLaps, { id: eventID, time: now, racerID: racer.id, eventtype: 'remove dns', comment: 'DNS removed' }]);
                     break
                 case 'remove dnf':
                     allRacers[theRacerIndex].dnf = false
                     allRacers[theRacerIndex].next = 20
-                    props.setRacers(allRacers)
+                    setAllCompetitors(allRacers)
                     props.setlogLaps([...props.logLaps, { id: eventID, time: now, racerID: racer.id, eventtype: 'remove dnf', comment: 'DNF removed' }]);
                     break
                 default:
@@ -339,13 +351,15 @@ export default function Scoreboard(props) {
                                     }
                                 }}
                                 avatar={
-                                    <>{(racer.dnf || racer.dns || racer.finished || racer.next > 59) ? "" :
+                                    <>{(racer.next > 99 && !racer.finished) ? "" :
                                         <><Tooltip title={'Beräknas ankomma inom ' + racer.next + ' minut' + (racer.next === 1 ? '' : 'er')}>
                                             <Badge
+                                                key={index + 'a'}
+                                                id={index + 'b'}
                                                 overlap="rectangular"
                                                 color={(racer.next === 0 ? "warning" : "info")}
                                                 anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                                                badgeContent={(racer.next === 0 ? '!' : racer.next)}
+                                                badgeContent={(racer.finished) ? <FaFlagCheckered /> : (racer.next === 0 ? '!' : racer.next > 99 ? '' : racer.next)}
                                             >
                                             </Badge>
                                         </Tooltip>
@@ -359,35 +373,21 @@ export default function Scoreboard(props) {
                                 }
                                 action={
                                     <IconButton
-                                        id={'raceroptionicon' + racer.id}
+                                        id={'raceroptionbutton' + racer.id}
                                         onTouchStart={(event) => event.stopPropagation()}
-                                        onMouseDown={(event) => event.stopPropagation()}
-                                        //  onClick={(event) => { event.stopPropagation(); event.preventDefault();}}                 
-                                        id={'raceroptionicon' + racer.id}
-                                        aria-label={'raceroptionicon' + racer.id}
-                                        //aria-controls={open ? 'racermenu' + racer.id : undefined}
-                                        // aria-haspopup="true"
-                                        // aria-expanded={open ? 'true' : undefined}
+                                        onMouseDown={(event) => event.stopPropagation()}                                      
                                         onClick={(event) => { event.stopPropagation(); event.preventDefault(); onClickRacerOptions(event, racer, index) }}
                                     >
-                                        <MoreVertIcon
-                                        />
+                                    <MoreVertIcon/>
                                     </IconButton>
                                 }
                                 title={<Tooltip title={createRacerTooltip(racer)}>{racer.name}</Tooltip>}
                                 titleTypographyProps={{ noWrap: true }}
-                                subheader={racer.lapmarkings.length === 0 || racer.dns ? createLapTimeInfoString(racer) :
-                                    <>{racer.finished || racer.dnf ? <FaFlagCheckered /> : <FaStopwatch />} {createLapTimeInfoString(racer)}</>}
-                                //subheader={racer.lapmarkings.length == 0 || racer.dnf || racer.dns || racer.finished? createLapTimeInfoString(racer) : <span><FontAwesomeIcon icon={faStopwatch}/> {createLapTimeInfoString(racer)}</span>}
-                                //subheader={<FontAwesomeIcon icon={faClock} />(createLapTimeInfoString(racer) )}
+                                subheader={createLapTimeInfoString(racer)}
                                 subheaderTypographyProps={{ noWrap: true }}
                             />
                             <Menu
-                                id={'racermenu' + racer.id}
-                                key={'racermenu' + racer.id}
-                                aria-labelledby={'raceroptionicon' + racer.id}
                                 anchorEl={anchorRacerOptions[index]}
-                                //open={Boolean(anchorRacerOptions)}
                                 open={anchorRacerOptions[index] ? true : false}
                                 onClose={onCloseRacerOptions}
                                 anchorOrigin={{
@@ -427,33 +427,27 @@ export default function Scoreboard(props) {
 
     function restartAllRacers() {
 
-        let allRacers = props.racers;
-        allRacers.map((racer) => {
+        let allRacers = deepClone(allCompetitors);
+        allRacers.forEach((racer) => {
             racer.lapmarkings = [];
             racer.dns = false;
             racer.dnf = false;
             racer.finished = false;
             racer.next = 999
         });
-
-        props.setRacers(allRacers);
+        setAllCompetitors(allRacers);
         props.setlogLaps([])
-
-        let theRace = props.raceSettings;
+        let theRace = deepClone(raceSetup);
         theRace.state = 'planning'
-        props.setRaceSettings(theRace)
-
+        setraceSetup(theRace)
     }
 
     function masStart() {
-        let allRacers = props.racers;
+        let allRacers = deepClone(allCompetitors);
         let newLog = []
-
         const now = new Date();
-
-        allRacers.map((racer) => {
+        allRacers.forEach((racer) => {
             let eventID = uniqueID();
-            let newEvent = { id: eventID, time: now };
             newLog.push({ id: eventID, time: now, racerID: racer.id, comment: 'Gemensam start' })
             racer.lapmarkings = [{ id: eventID, time: now }]
             racer.next = 20
@@ -462,43 +456,12 @@ export default function Scoreboard(props) {
             racer.finished = false
         }
         );
-        props.setRacers(allRacers);
+        setAllCompetitors(allRacers);
         props.setlogLaps(newLog)
 
-        let theRace = props.raceSettings;
+        let theRace = deepClone(raceSetup);
         theRace.state = 'planning'
-        props.setRaceSettings(theRace)
-    }
-
-    function loadFromLocalStorage() {
-        return //FIXME
-        const savedracers = localStorage.getItem("racers");
-        const savedlogLaps = localStorage.getItem("logLaps");
-        const raceSettings = localStorage.getItem("raceSettings");
-        let parsedracers = JSON.parse(savedracers);
-        let parsedlogLaps = JSON.parse(savedlogLaps);
-        const parsedraceSettings = JSON.parse(raceSettings);
-
-
-
-        parsedlogLaps.map((logItem) => (logItem.time = new Date(logItem.time)))
-        for (let i = 0; i < parsedracers.length; i++) {
-            if (parsedracers[i].lapmarkings.length > 0) {
-                parsedracers[i].lapmarkings.map((log) => (log.time = new Date(log.time)))
-            }
-        }
-
-        //parsedracers.map((racer) => {return (racer.lapmarkings.length> 0 ? racer.lapmarkings.map( (log) => (log.time = new Date(log.time)))
-
-        props.setRacers(parsedracers)
-        props.setlogLaps(parsedlogLaps)
-        props.setRaceSettings(parsedraceSettings)
-    }
-    function saveToLocalStorage() {
-        return //FIXME
-        localStorage.setItem("logLaps", JSON.stringify(props.logLaps));
-        localStorage.setItem("racers", JSON.stringify(props.racers));
-        localStorage.setItem("raceSettings", JSON.stringify(props.raceSettings));
+        setraceSetup(theRace)
     }
 
     function createCards(racers) {
@@ -517,6 +480,23 @@ export default function Scoreboard(props) {
             </>)
     }
 
+
+    function returnRaceNumberOrSystem(id, theRacers) {
+        if (id === 'system') {
+            return ''
+        } else {
+            const theRacer = allCompetitors.find((racer) => racer.id === id)
+            return (theRacer?.number || '')
+        }
+    }
+    function returnRaceNameOrSystem(id, theRacers) {
+        if (id === 'system') {
+            return ''
+        } else {
+            const theRacer = allCompetitors.find((racer) => racer.id === id)
+            return (theRacer?.name || '')
+        }
+    }
     const columns = [
         {
             field: 'actions',
@@ -542,7 +522,7 @@ export default function Scoreboard(props) {
             editable: false,
             align: 'right',
             headerAlign: 'center',
-            valueGetter: (params) => { const theRacer = props.racers.find((racer) => racer.id === params.row.racerID); return (theRacer ? theRacer.number : 'Deleted?') }
+            valueGetter: (params) => { return returnRaceNumberOrSystem(params.row.racerID, allCompetitors) }
         },
         //{
         //    field: 'racerID',
@@ -551,7 +531,7 @@ export default function Scoreboard(props) {
         //    editable: false,
         //    align: 'right',
         //    headerAlign: 'center',
-        //    valueGetter: (params) => { const theRacer = props.racers.find((racer) => racer.id == params.value); return (theRacer ? '#' + theRacer.number + ' ' + theRacer.name : 'Deleted?') }
+        //    valueGetter: (params) => { const theRacer = allCompetitors.find((racer) => racer.id == params.value); return (theRacer ? '#' + theRacer.number + ' ' + theRacer.name : 'Deleted?') }
         //},
         {
             field: 'racerID',
@@ -560,7 +540,7 @@ export default function Scoreboard(props) {
             editable: false,
             align: 'right',
             headerAlign: 'center',
-            valueGetter: (params) => { const theRacer = props.racers.find((racer) => racer.id === params.value); return (theRacer ? theRacer.name : 'Deleted?') }
+            valueGetter: (params) => { return returnRaceNameOrSystem(params.row.racerID, allCompetitors) }
         },
         {
             field: 'time',
@@ -585,54 +565,113 @@ export default function Scoreboard(props) {
         },
     ];
 
+    //    const racerRef = useRef(allCompetitors)
+
+    async function ScannerWorker() {
+        try {
+            const ndef = new window.NDEFReader();
+            setnfcState('Scanning')
+            await ndef.scan().then(() => {
+                console.log("Scan started successfully.");
+                ndef.onreadingerror = (event) => { console.log("Error! Cannot read data from the NFC tag.",); };
+                ndef.onreading = async ({ message, serialNumber }) => { setNFCReadMessage(serialNumber); setnfcState('free'); await new Promise((resolve) => setTimeout(resolve, 1000)); };
+            }).catch((error) => {
+                setnfcState('error');
+            });
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        } catch (error) {
+            setnfcState('error');
+            console.log('GENERALFAIL')
+        }
+    }
+
+    async function loadEverythingForRace(id) {
+        if (id) {
+            const docRefRace = doc(db, "races", id);
+            try {
+                console.log('Loading...')
+                const docSnapRace = await getDoc(docRefRace);
+                let loadedRace = docSnapRace.data();
+                setraceSetup(loadedRace)
+                const docRefRacers = doc(db, "racerlist", loadedRace.racerlistid);
+                const docSnapRacers = await getDoc(docRefRacers);
+                let racers = Object.entries(docSnapRacers.data()).map(([id, values]) => ({ id, ...normalizeRacer(values, true) }))
+                setAllCompetitors(racers)
+                console.log('Race and all users were loaded')
+
+            } catch (error) {
+                console.log(error)
+            }
+        }
+    }
+
+
     const [count, setCount] = useState(0);
+    
+    const location = useLocation();
 
     useEffect(() => {
+        console.log('Enterered Scoreboard useeffect')
+        console.log("Props", props);
+        console.log("Location", location);
+        if (!dataBaseLoaded) {
+            console.log('Calling database for complete load')
+            loadEverythingForRace(location.state.raceid)
+            setdataBaseLoaded(1)
+        }
+        if (NFCReadMessage) {
+            clickedCard(0, allCompetitors[Math.round(Math.random(1))])
+            setNFCReadMessage('')
+        }
+        if (('NDEFReader' in window) && (nfcState === 'free')) {
+            // Wow we have an NFC reder and it is not occupied            
+            console.log('NFC reader detected and started')
+            ScannerWorker()
+        }
+        else {
+            setnfcState('error')
+            console.log('No NFC reader available')
+        }        
         const cardTimer = setInterval(() => {
-            if (count % 10 === 0) {
-                updateNext();
-                setCount((oldCount) => oldCount + 1)
-            }
-            else {
-                setCount((oldCount) => oldCount + 1)
+            const racingNow = raceSetup && raceSetup.state === 'running'
+            console.log('Counting: ' + count)
+            if (racingNow) {
+                console.log('Counting inner: ' + count)
+               updateNext();               
+                setCount((oldCount) => oldCount + 1)                
             }
         }, 1000);
-
         return () => { clearInterval(cardTimer) }
-    },);
-
+    }, [allCompetitors, NFCReadMessage]);
 
     console.log(props)
 
     return (
         <>
+            <h1>{NFCReadMessage}</h1>
             <AppBar position="static">
                 <Toolbar sx={{ justifyContent: "space-between" }}>
-
                     <ButtonGroup>
                         <Box>
-                            <Tooltip onClick={clickViewModel} title="Byt vy"><Button color="inherit"> <FontAwesomeIcon icon={(viewModel.state === 0) ? faTableCells : (viewModel.state === 1) ? faHouseTsunami : faList} size="lg" /> </Button></Tooltip>
-                            <Tooltip title="Sortera efter startnummer"><Button disabled={viewModel.state === 2} color="inherit" onClick={(event) => setThesortField("number")}> <FontAwesomeIcon icon={sortDirection === 1 ? faSortNumericAsc : faSortNumericDesc} size="lg" /> </Button></Tooltip>
-                            <Tooltip title="Sortera efter beräknad varvning"><Button disabled={viewModel.state === 2} color="inherit" onClick={(event) => setThesortField("next")}><FontAwesomeIcon icon={faArrowDown} /><FontAwesomeIcon icon={faBinoculars} size="lg" /> </Button></Tooltip>
-                            <Tooltip title="Sortera efter namn"><Button color="inherit" disabled={viewModel.state === 2} onClick={(event) => setThesortField("name")}><FontAwesomeIcon icon={sortDirection === 1 ? faSortAlphaAsc : faSortAlphaDesc} size="lg" /></Button></Tooltip>
-                            <Tooltip onClick={changeHideMode} title={(hideCards ? 'Visa inaktiva' : 'Dölj inaktiva')}><Button color="inherit"> <FontAwesomeIcon icon={(hideCards) ? faEyeSlash : faEye} size="lg" /> </Button></Tooltip>
+                            <Tooltip onClick={clickViewType} title="Byt vy"><Button color="inherit"> <FontAwesomeIcon icon={(viewType.state === 0) ? faTableCells : (viewType.state === 1) ? faHouseTsunami : faList} size="lg" /> </Button></Tooltip>
+                            <Tooltip title="Sortera efter startnummer"><Button disabled={viewType === 2} color="inherit" onClick={(event) => setThesortField("number")}> <FontAwesomeIcon icon={sortDirection === 1 ? faSortNumericAsc : faSortNumericDesc} size="lg" /> </Button></Tooltip>
+                            <Tooltip title="Sortera efter beräknad varvning"><Button disabled={viewType === 2} color="inherit" onClick={(event) => setThesortField("next")}><FontAwesomeIcon icon={faArrowDown} /><FontAwesomeIcon icon={faBinoculars} size="lg" /> </Button></Tooltip>
+                            <Tooltip title="Sortera efter namn"><Button color="inherit" disabled={viewType === 2} onClick={(event) => setThesortField("name")}><FontAwesomeIcon icon={sortDirection === 1 ? faSortAlphaAsc : faSortAlphaDesc} size="lg" /></Button></Tooltip>
+                            <Tooltip title={(hideCards ? 'Visa inaktiva' : 'Dölj inaktiva')}><Button onClick={changeHideMode} color="inherit"> <FontAwesomeIcon icon={(hideCards) ? faEyeSlash : faEye} size="lg" /> </Button></Tooltip>
                         </Box>
                     </ButtonGroup>
-
                     <ButtonGroup>
                         <Box>
                             <Tooltip title="Nollställ"><Button color="inherit" onClick={restartAllRacers}>Nollställ</Button></Tooltip>
                             <Tooltip title="Masstart"><Button color="inherit" onClick={masStart}>Masstart</Button></Tooltip>
-                            <Tooltip title="Spara"><Button color="inherit" onClick={saveToLocalStorage}>Spara</Button></Tooltip>
-                            <Tooltip title="Ladda"><Button color="inherit" onClick={loadFromLocalStorage}>Ladda</Button></Tooltip>
                         </Box>
                     </ButtonGroup>
                     <Rightviewmenu />
                 </Toolbar>
             </AppBar>
-            {viewModel.state < 2 && props.racers.length > 0 && createCards(normalizeRacers(props.racers))}
+            {(viewType.state < 2) && (allCompetitors.length > 0) && createCards((allCompetitors))}
             <div>
-                {((viewModel.state > 0) && props.logLaps.length > 0) &&
+                {((viewType.state > 0) && props.logLaps.length > 0) &&
                     <DataGrid
                         initialState={
                             {
@@ -648,3 +687,5 @@ export default function Scoreboard(props) {
         </>
     );
 }
+//                            <Tooltip title="Spara"><Button color="inherit" onClick={saveToLocalStorage}>Spara</Button></Tooltip>
+//                            <Tooltip title="Ladda"><Button color="inherit" onClick={loadFromLocalStorage}>Ladda</Button></Tooltip>

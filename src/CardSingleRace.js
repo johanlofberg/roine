@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import Card from '@mui/material/Card';
+import { Image } from 'react-bootstrap';
 import CardHeader from '@mui/material/CardHeader';
 import CardActionArea from '@mui/material/CardActionArea';
 import CardActions from '@mui/material/CardActions';
@@ -18,6 +19,7 @@ import { loadSingleDocument } from './Database';
 import { normalizeRacer } from './myUtilities';
 import { FaTrash } from 'react-icons/fa';
 import { deleteDoc } from "firebase/firestore";
+import GMK from './gmk.png'
 
 const fetchDocument = async (id) => {
     const firestore = getFirestore()
@@ -44,21 +46,27 @@ const ExpandMore = styled((props: ExpandMoreProps) => {
 }));
 
 
-async function deleteRace(race) {
-
-    const raceid = race.id
-    const racerlistid = race.racerlistid
-
-    const raceRef = doc(db, 'races',raceid)
-    deleteDoc(raceRef).then(() => {console.log("Entire race has been deleted successfully.")})
-
-    if (racerlistid){
-        const listRef = doc(db, 'racerlist', racerlistid)
-        deleteDoc(listRef).then(() => {console.log("Entire racer list has been deleted successfully.")})
-    }    
-}
 
 const CardSingleRace = (props) => {
+
+    async function deleteRace(race) {
+
+        const raceid = race.id
+        const racerlistid = race.racerlistid
+
+        const raceRef = doc(db, 'races', raceid)
+        deleteDoc(raceRef).then(() => { console.log("Entire race has been deleted successfully.") })
+
+        if (racerlistid) {
+            const listRef = doc(db, 'racerlist', racerlistid)
+            deleteDoc(listRef).then(() => { console.log("Entire racer list has been deleted successfully.") })
+        }
+        props.setNeedsReload(true)
+
+//        console.log(props.raceList.IndexOf(raceid))
+
+    }
+
 
     async function clickRace(e, race) {
 
@@ -93,44 +101,34 @@ const CardSingleRace = (props) => {
         < React.Fragment key={props.race.id} >
             <Card key={'card' + props.index} sx={{ width: '100%', ':hover': { boxShadow: 15 } }}>
                 <CardActionArea component={RouterLink} to={'/Results'} onClick={(e) => clickRace(e, props.race)}>
-                    <CardHeader key={'cardheader' + props.index}
-                        avatar={
-                            <Avatar sx={{ bgcolor: blue[500] }} aria-label="recipe">
-                                R
-                            </Avatar>
-                        }
+                    <CardHeader
+                        avatar={<Avatar alt="Apple" src={GMK} />}                                                                           
                         action={
                             <IconButton key={'cardicon' + props.index} aria-label="settings">
                                 <MoreVertIcon key={'vert' + props.index} />
                             </IconButton>
                         }
-                        title={props.race.name == undefined ? 'Okänt namn' : props.race.name}
-                        subheader={props.race.date == undefined ? 'Okänt tävlingsdatum' : props.race.date}
-                    />
-                    <CardContent key={'card1' + props.index}>
-                        <Typography key={'cardtext' + props.index} variant="body2" color="text.secondary">
-                            {props.race.state === 'planning'
-                                ? 'Tävling under planering'
-                                : props.race.state === 'running'
-                                    ? 'Tävling pågår'
-                                    : props.race.state === 'finished'
-                                        ? 'Tävling genomförd'
-                                        : 'Okänd status'}
-                        </Typography>
-                    </CardContent>
+                        title={props.race.name == undefined ? 'Okänt namn' : props.race.name + (props.race.date? ' (' + props.race.date + ')' : '(datum ej satt)' )}
+                        subheader={props.race.state === 'planning'
+                        ? 'Tävling under planering' + ', skapad ' + (new Date(props.race.datecreate))
+                        : props.race.state === 'running'
+                            ? 'Tävling pågår'
+                            : props.race.state === 'finished'
+                                ? 'Tävling genomförd'
+                                : 'Okänd status'}
+                    />                   
                     <CardActions disableSpacing>
-
-                        <IconButton                            
-                                onTouchStart={(event) => event.stopPropagation()}
-                                onMouseDown={(event) => event.stopPropagation()}                               
-                                // id={'roptionicon' + racer.id}                                
-                                //aria-controls={open ? 'racermenu' + racer.id : undefined}
-                                // aria-haspopup="true"
-                                // aria-expanded={open ? 'true' : undefined}
-                                onClick={(event) => { event.stopPropagation(); event.preventDefault(); deleteRace(props.race)}}
-                                size='small'>
-                                < FaTrash />
-                            </IconButton>
+                        <IconButton
+                            onTouchStart={(event) => event.stopPropagation()}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            // id={'roptionicon' + racer.id}                                
+                            //aria-controls={open ? 'racermenu' + racer.id : undefined}
+                            // aria-haspopup="true"
+                            // aria-expanded={open ? 'true' : undefined}
+                            onClick={(event) => { event.stopPropagation(); event.preventDefault(); deleteRace(props.race) }}
+                            size='small'>
+                            < FaTrash />
+                        </IconButton>
                     </CardActions>
                     <Collapse key={'card2' + props.index} in={expanded} timeout="auto" unmountOnExit>
                         <CardContent key={'cardmore' + props.index}>

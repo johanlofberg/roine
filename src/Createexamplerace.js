@@ -15,7 +15,7 @@ export default function Createexamplerace() {
         datecreated: '',
         dateedited: '',        
         racerlistid: '',     
-        racelogid: '',
+        logid: '',
         series: [],
     };
     return theRace;

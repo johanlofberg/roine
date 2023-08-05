@@ -7,8 +7,9 @@ import CardSingleRace from './CardSingleRace';
 const ListRacesAsCards = (props) => {
 
     const [raceList, setRaceList] = useState([])
+    const [needsReload,setNeedsReload] = useState(false)
 
-    useEffect(() => {fetchRaces()}, [db]);
+    useEffect(() => { console.log('Useeffect in racelistcards');fetchRaces() }, [db,needsReload]);
 
     const fetchRaces = async () => {
         await getDocs(collection(db, "races"))
@@ -17,12 +18,14 @@ const ListRacesAsCards = (props) => {
                 console.log('Loaded races!');
                 setRaceList(newData)
                 console.log(newData);
-            })
+                setNeedsReload(false)
+            }
+            )
     }
 
     return (
-        <Fragment key='racelist'>        
-            {raceList.map((aRace,index) => {return <CardSingleRace racers={props.racers} setRacers={props.setRacers} raceSettings={props.raceSettings} setRaceSettings={props.setRaceSettings} index = {index} race = {aRace}/>})}
+        <Fragment key='racelist'>
+            {raceList.map((aRace, index) => { return <CardSingleRace needsReload = {needsReload} setNeedsReload={setNeedsReload} racers={props.racers} setRacers={props.setRacers} raceSettings={props.raceSettings} setRaceSettings={props.setRaceSettings} index={index} race={aRace} /> })}
         </Fragment>
     )
 }

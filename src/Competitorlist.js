@@ -36,7 +36,7 @@ export default function Competitorlist(props) {
 
     function addNewRacer(e, params) {
 
-        if (params == undefined) {
+        if (params === undefined) {
             const maxStartNumber = Math.max(...props.racers.map(racer => racer.number), 0);
             props.setRacers([...props.racers, {
                 id: uniqueID(),
@@ -56,8 +56,6 @@ export default function Competitorlist(props) {
                 club: params.row.club,
             }])
         }
-        console.log(params)
-
     }
 
     // https://github.com/mui/mui-x/issues/2714
@@ -156,7 +154,6 @@ export default function Competitorlist(props) {
                 <button onClick={addNewRacer}>Ny förare</button>
                 <button onClick={saveRacerList}>Spara lista</button>
             </div>
-
         </div>
     );
 }

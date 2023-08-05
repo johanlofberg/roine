@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import People from '@mui/icons-material/People';
 import Person from '@mui/icons-material/Person';
 import { Checkbox, List, ListItem, ListItemDecorator } from '@mui/joy';
@@ -5,18 +6,22 @@ import Radio from '@mui/joy/Radio';
 import RadioGroup from '@mui/joy/RadioGroup';
 import { Button, TextField } from '@mui/material';
 import React, { useState } from 'react';
+import Autocomplete from '@mui/material/Autocomplete';
 import { FaClock, FaDatabase, FaPlusSquare, FaRecycle, FaSave, FaUpload } from 'react-icons/fa';
 import Competitorlist from './Competitorlist';
-import { uniqueID, normalizeRacers } from './myUtilities';
+import { uniqueID, normalizeRacers, normalizeRacer } from './myUtilities';
 import { saveRaceToDataBase, saveRacerListToDataBase } from './Database';
 import { Link } from "react-router-dom";
-import Createexampleusers from './Createexampleusers';
+import { useEffect } from 'react';
+import { doc, getDocs, getDoc, collection } from "firebase/firestore";
+import { db } from './firebase';
+import Papa from 'papaparse';
 
 const Createrace = (props) => {
 
     function createNewRacerList() {
         const defaultRacer = { id: uniqueID(), 'name': '?', number: 1, 'class': raceClasses[0].name, club: '?' }
-        props.setRacers([defaultRacer]) 
+        setLocalRacers([defaultRacer])
     }
 
     let possibleClasses = [
@@ -31,55 +36,115 @@ const Createrace = (props) => {
     const possibleRaceType = ['Lap', 'Time']
     const possibleRaceTypeIcons = [<FaRecycle />, <FaClock />]
 
-    const [raceName, setRaceName] = useState(props.raceSettings?.name || 'Ny tävling')
-    const [raceStart, setRaceStart] = useState(props.raceSettings?.start || possibleRaceStarts[0])    
-    const [raceType, setRaceType] = useState(props.raceSettings?.type || possibleRaceType[0])
-    const [raceDate, setRaceDate] = useState(props.raceSettings?.date || '')
-
-    if (props.raceSettings?.classes) {
-        possibleClasses = props.raceSettings.classes
-    }
-    const [raceClasses, setRaceClasses] = useState(props.raceSettings?.classes || possibleClasses)
+    const [raceName, setRaceName] = useState('Ny tävling')
+    const [raceID, setRaceID] = useState('')
+    const [racerListID, setRacerListID] = useState('')
+    const [raceStart, setRaceStart] = useState(possibleRaceStarts[0])
+    const [raceType, setRaceType] = useState(possibleRaceType[0])
+    const [raceDate, setRaceDate] = useState(new Date().toISOString().slice(0, 10))
+    const [raceCreateDate, setRaceCreateDate] = useState('')
+    const [raceClasses, setRaceClasses] = useState(possibleClasses)
+    const [racersHaveBeenReset, setRacersHaveBeenReset] = useState(false)
+    const [localRacers, setLocalRacers] = useState([])
+    const [historyList, setHistoryList] = useState([])
 
     function handleSubmit(event) {
         event.preventDefault();
     }
 
+    /*
+    async function loadUsersFromPastRaces() {
+        const docRefRace = doc(db, "races", race.id);
+        try {
+            const docSnap = await getDoc(docRefRace);
+            console.log(docSnap.data())
+            props.setRaceSettings(docSnap.data())
+            console.log(docSnap.data());
+        } catch (error) {
+            console.log(error)
+        }
+    }
+    */
+
+    function importFromCSV()
+    {        
+        const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqgUYoZ9hsSOCuspxnZBsR9m5DTWGEigJWd8OiOgWdDG_f8IQ2USj19ZwaM34V6u7kT8zLX2furyZs/pub?gid=0&single=true&output=csv'
+        const result = Papa.parse(url, {
+            download: true,
+            dynamicTyping: true,
+            download: true,
+            header: true,
+            comments: "*=",
+            complete: function(results) {
+                console.log(results)
+                setLocalRacers(normalizeRacers(results.data))
+            }
+        })        
+        console.log(result)
+    }
+
+    const loadUsersFromPastRaces = async () => {
+        await getDocs(collection(db, "races"))
+            .then((querySnapshot) => {
+                const newData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+                console.log('Loaded races!')
+                console.log(newData);
+                const theIDs = newData.map(({ name, racerlistid, ...rest }) => ({ racerlistid, label: name }));
+                //map(({ id, name, ...rest }) => ({ id, HisName: name, ...rest }));
+                console.log(theIDs)
+                setHistoryList(theIDs)
+                console.log(historyList)
+            }
+            )
+    }
+
+    async function userSelectedHistoryList(e, selectedRow) {
+        console.log(e)
+        console.log(selectedRow)
+        if (selectedRow.racerlistid) {
+            const docRefRacers = doc(db, "racerlist", selectedRow.racerlistid);
+            const docSnapRacers = await getDoc(docRefRacers);
+            let racers = Object.entries(docSnapRacers.data()).map(([id, values]) => ({ id, ...normalizeRacer(values, true) }))
+            console.log(racers)
+            setLocalRacers(racers)
+        }
+    }
+
     function saveRace(event) {
         event.preventDefault();
         // Create a new race from data in form        
-        let racerlistid = ''
         let didWeManageTosSaveParticpants = false
-        if (props.raceSettings.racerlistid || props.racers.length > 0) {
-            // We have a racer list, so first create an id for this, and save it           
-            if (props.raceSettings.racerlistid) {         
-                racerlistid = props.raceSettings.racerlistid
-            }
-            else {                
-                racerlistid = uniqueID()
-            }
-            didWeManageTosSaveParticpants = saveRacerListToDataBase(normalizeRacers(props.racers), racerlistid)
-        }        
+        let attachedRacerListID = ''
+        if (racerListID || localRacers.length > 0) {
+            // We have a racer list, so first create an id for this, and save
+            // this list of racers as a list coupled to this race                    
+            attachedRacerListID = racerListID || uniqueID()
+            console.log('We have a racer list')
+            didWeManageTosSaveParticpants = saveRacerListToDataBase(normalizeRacers(localRacers), attachedRacerListID)
+            setRacerListID(attachedRacerListID)
+            console.log('And it was set to', attachedRacerListID)
+        }
         const theRace = {
             // Importantly, only create a new when built from scratch
-            id: props.raceSettings.id || uniqueID(),
-            datecreate: props.raceSettings.datecreated || (new Date()).toISOString(),
-            state: props.raceSettings.state || 'planning',
-            // These can be updated
+            id: raceID || uniqueID(),
+            datecreate: raceCreateDate || (new Date()).toISOString(),
+            state: 'planning',
+            // These are controlled in the form
             name: raceName,
             classes: raceClasses,
             type: raceType,
             start: raceStart,
-            date: raceDate,          
-            racerlistid: racerlistid,
+            date: raceDate,
+            racerlistid: attachedRacerListID,
+            logid: uniqueID(),
         };
-        console.log(theRace)
-        console.log('Fixed race')
+      
         let didWeManageTosSaveRace = saveRaceToDataBase(theRace)
         if (didWeManageTosSaveParticpants && didWeManageTosSaveRace) {
-            props.setRaceSettings(theRace)           
-            props.setRacers(normalizeRacers(props.racers))
+            //props.setRaceSettings(theRace)           
+            //setLocalRacers(normalizeRacers(localRacers))
         }
+        setRaceID(theRace.id)
     }
 
     function switchActiveClass(e, index) {
@@ -95,6 +160,23 @@ const Createrace = (props) => {
         items[index] = item;
         setRaceClasses(items)
     }
+
+
+    const location = useLocation();
+    console.log(props, " props");
+    console.log(location, " useLocation Hook");
+
+    useEffect(() => {
+        setLocalRacers([])
+        //        if ((location.state.view == 'new') && !racersHaveBeenReset) {
+        //          setRacersHaveBeenReset(true)
+        //        setLocalRacers([])    
+        console.log('Reset racers in createrace')
+        //        }
+        console.log('Useeffect in createrace')
+        console.log(localRacers)
+
+    }, []);
 
     return (
         <>
@@ -117,7 +199,7 @@ const Createrace = (props) => {
                     type="date"
                     variant='outlined'
                     color='primary'
-                    label={raceDate ? '' : 'Datum'}
+                    value={raceDate}
                     onChange={e => setRaceDate(e.target.value)}
                     fullWidth
                     sx={{ marginBottom: '1rem' }}
@@ -132,7 +214,7 @@ const Createrace = (props) => {
                             '--ListItemDecorator-size': '32px',
                         }}>
                         {possibleRaceStarts.map((item, index) => (
-                            <><ListItem                                
+                            <><ListItem
                                 width='20%'
                                 variant="outlined"
                                 key={item}
@@ -142,7 +224,6 @@ const Createrace = (props) => {
                                     {possibleRaceStartsIcons[index]}
                                 </ListItemDecorator>
                                 <Radio
-                                    disabled = {(props.raceSettings.state === 'running') || (props.raceSettings.state === 'finished')}
                                     overlay
                                     value={item}
                                     label={possibleRaceStarts[index]}
@@ -187,14 +268,11 @@ const Createrace = (props) => {
                                     {possibleRaceTypeIcons[index]}
                                 </ListItemDecorator>
                                 <Radio
-                                    disabled = {(props.raceSettings.state === 'running') || (props.raceSettings.state === 'finished')}
                                     overlay
                                     value={item}
                                     label={possibleRaceType[index]}
                                     sx={{ flexGrow: 1, }}
-
                                     onChange={(e) => (setRaceType(item))}
-
                                     slotProps={{
                                         action: ({ checked }) => ({
                                             sx: (theme) => ({
@@ -257,15 +335,26 @@ const Createrace = (props) => {
                             </TextField>
                         </>
                     ))}
-                </List>
-
+                </List>                
                 <Button type="submit" variant="outlined" color="primary" startIcon={<FaSave />} sx={{ width: '50%' }} onClick={(e) => saveRace(e)}>{props.raceSettings.id ? 'Uppdatera data' : 'Spara tävling'}  </Button>
-                <Button hidden={!(props.raceSettings.state === 'planning')} type="submit" variant="outlined" startIcon={<FaSave />} sx={{ width: '50%' }} as={Link} to='/'>Starta tävling  </Button>
-                <Button hidden = {!(props.raceSettings.state === 'planning') } variant="outlined" startIcon={<FaPlusSquare />} sx={{ width: '33.3%' }} onClick={(e) => createNewRacerList()}>Skapa ny deltagarlista  </Button>
-                <Button hidden = {!(props.raceSettings.state === 'planning') } variant="outlined" startIcon={<FaDatabase />} sx={{ width: '33.3%' }} onClick={(e) => (props.setRacers('asdas'))}>Deltagarlista från tidigare tävling</Button>
-                <Button hidden = {!(props.raceSettings.state === 'planning') } variant="outlined" startIcon={<FaUpload />} sx={{ width: '33.3%' }} onClick={(e) => (props.setRacers('asdas'))}>Importera deltagarlista</Button>
+                <Button onClick={(e) => { setLocalRacers([]) }} hidden={!raceID || localRacers.length === 0} type="submit" variant="outlined" startIcon={<FaSave />} sx={{ width: '50%' }} as={Link} to='/scoreboard' state={{ raceid: raceID }} >Starta tävling  </Button>
+                <Button hidden={!(props.raceSettings.state === 'planning')} variant="outlined" startIcon={<FaPlusSquare />} sx={{ width: '33.3%' }} onClick={(e) => createNewRacerList()}>Skapa ny deltagarlista  </Button>
+                
+                 <Autocomplete onChange={(e, index) => { userSelectedHistoryList(e, index) }}
+                    disablePortal
+                    disableClearable
+                    hidden = {historyList.length==0}
+                    key={historyList}
+                    id="combo-box-demo"
+                    options={historyList}
+                    sx={{ width: 300 }}
+                    renderInput={(race) => <TextField {...race} key={race.racerlistid} label="name" />}
+                />
+                
+                <Button hidden={!(props.raceSettings.state === 'planning') || historyList.length>0} variant="outlined" startIcon={<FaDatabase />} sx={{ width: '33.3%' }} onClick={(e) => loadUsersFromPastRaces()}>Deltagarlista från tidigare tävling</Button>
+                <Button hidden={!(props.raceSettings.state === 'planning')} variant="outlined" startIcon={<FaUpload />} sx={{ width: '33.3%' }} onClick={(e) => (importFromCSV())}>Importera deltagarlista</Button>
             </form>
-            {(props.racers.length === 0 || (props.raceSettings.state === 'running') || (props.raceSettings.state === 'finished')) ? '' : <Competitorlist racers={props.racers} setRacers={props.setRacers} showMenu={false} />}
+            {(localRacers.length === 0 || (props.raceSettings.state === 'running') || (props.raceSettings.state === 'finished')) ? '' : <Competitorlist racers={localRacers} setRacers={setLocalRacers} showMenu={false} />}
         </>
     )
 }

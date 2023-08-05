@@ -7,6 +7,7 @@ import About from './About';
 import Menu from './Menu';
 import Contact from './Contact';
 import Createrace from './Createrace';
+import Importrace from './Importrace';
 import Competitorlist from './Competitorlist';
 import Createexampleusers from './Createexampleusers';
 import ListRacesAsCards from './ListRacesAsCards';
@@ -68,14 +69,17 @@ function App() {
   return (
     <>
       <BrowserRouter basename = '/roine' >      
-        {raceSettings.state == 'running' ? '' : <Menu />}
+         <Menu />
         <Routes>
           <Route path="/" element={<FrontPage />} />
-          <Route path="//scoreboard" element={<Scoreboard logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />          
+          <Route path="/scoreboard" element={<Scoreboard logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />          
           <Route path="/races" element={<ListRacesAsCards racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />
           <Route path="/results" element={<Results logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSetting={setRaceSettings} />} />
           <Route path="/competitorlist" element={<Competitorlist racers={racers} setRacers={setRacers} raceSettings={raceSettings} />} />          
-          <Route path="/createrace" element={<Createrace racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} showMenu={false} />} />          
+          <Route path="/importrace" element={<Importrace />} />          
+          <Route 
+            path="/createrace"
+            element={<Createrace racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} showMenu={false} />} />          
           <Route path="/scanner" element={<ScannerPage/>} />          
         </Routes>
       </BrowserRouter>
