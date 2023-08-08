@@ -89,6 +89,13 @@ export default function Competitorlist(props) {
 
     const columns = [
         {
+            field: 'actions',
+            type: 'actions',
+            width: 100,
+            getActions: (params) => [<GridActionsCellItem icon={<FaTrash />} onClick={() => deleteUser(params)} label="Delete" />,
+            <GridActionsCellItem icon={<FaUserPlus />} onClick={(e) => addNewRacer(e, params)} label="Add" />,],
+        },
+        {
             field: 'id',
             headerName: 'id',
             type: 'number',
@@ -96,6 +103,14 @@ export default function Competitorlist(props) {
             editable: false,
             align: 'right',
             headerAlign: 'center',
+        },       
+        {
+            field: 'name',
+            headerAlign: 'center',
+            headerName: 'Namn',
+            align: 'right',
+            width: 180,
+            editable: true
         },
         {
             field: 'number',
@@ -107,14 +122,6 @@ export default function Competitorlist(props) {
             headerAlign: 'center',
         },
         {
-            field: 'name',
-            headerAlign: 'center',
-            headerName: 'Namn',
-            align: 'right',
-            width: 150,
-            editable: true
-        },
-        {
             field: 'class',
             type: 'singleSelect',
             valueOptions: ['Bredd', 'Motion', 'Dam'],
@@ -122,14 +129,7 @@ export default function Competitorlist(props) {
             width: 90,
             editable: true
         },
-        { field: 'club', headerName: 'Klubb', width: 90, editable: true },
-        {
-            field: 'actions',
-            type: 'actions',
-            width: 100,
-            getActions: (params) => [<GridActionsCellItem icon={<FaTrash />} onClick={() => deleteUser(params)} label="Delete" />,
-            <GridActionsCellItem icon={<FaUserPlus />} onClick={(e) => addNewRacer(e, params)} label="Add" />,],
-        },
+        { field: 'club', headerName: 'Klubb', width: 90, editable: true },       
     ];
 
     const {showMenu = true} = props;
@@ -144,12 +144,18 @@ export default function Competitorlist(props) {
                 </Toolbar>
             </AppBar> : ''}
 
-            <div style={{ height: '100%', width: '100%' }}>
+            <div style={{ height: '100%', width: '100%'}}>
                 <DataGrid
+                checkboxSelection
                     editMode="row"
+                    disableRowSelectionOnClick
                     rows={props.racers}
                     columns={columns}
                     processRowUpdate={processRowUpdate}
+                    initialState={{
+                        sorting: { sortModel: [{ field: 'number', sort: 'asc' }], },
+                        columns: { columnVisibilityModel: { id: false }, }
+                      }}
                 />
                 <button onClick={addNewRacer}>Ny förare</button>
                 <button onClick={saveRacerList}>Spara lista</button>

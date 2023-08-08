@@ -5,7 +5,7 @@ export default function relativemilliSecondsToTimeStr(value, format) {
     if (value === undefined) {
         return ''
     }
-    else if ((format == 'short') && (value < 60*60*3600 )) {
+    else if ((format === 'short') && (value < 60*60*3600 )) {
         return new Date(value).toISOString().substring(14, 19)
     }
     else { 

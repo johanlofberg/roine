@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, BrowserRouter, useLocation} from 'react-router-dom';
+import { Routes, Route, Link, HashRouter, useLocation} from 'react-router-dom';
 import Home from './Home';
-import Results from './Results';
+import NewResults from './NewResults';
 import Scoreboard from './Scoreboard';
 import About from './About';
 import Menu from './Menu';
@@ -17,6 +17,11 @@ import { db } from './firebase';
 import { saveRaceToDataBase,saveRacerListToDataBase } from './Database'
 import FrontPage from './FrontPage';
 import ScannerPage from './ScannerPage';
+import AdminUsers from './AdminUsers'
+import AdminRaces from './AdminRaces'
+import Profilepage from './Profilepage'
+import AdminRacerlist from './AdminRacerlist';
+import Series from './Series'
 
 function App() {
 
@@ -55,10 +60,10 @@ function App() {
     if (raceSettings.state === 'finished' && prevraceSettings.current.state == 'running') {
       // Perform the database save operation here
       //console.log('Saving triggered')
-      let didWeManageTosSaveRace = saveRaceToDataBase(raceSettings)
+      // let didWeManageTosSaveRace = saveRaceToDataBase(raceSettings)
       //console.log('Saving race done')
       //console.log(racers,raceSettings.racerlistid)
-      let didWeMana,geTosSaveRaceList = saveRacerListToDataBase(racers,raceSettings.racerlistid)
+      //let didWeMana,geTosSaveRaceList = saveRacerListToDataBase(racers,raceSettings.racerlistid)
       //console.log('Useeffect saving done')
     } else { 
       //console.log('USEEFFECT called but nothing was done', raceSettings, prevraceSettings.current) 
@@ -68,23 +73,31 @@ function App() {
 
   return (
     <>
-      <BrowserRouter basename = '/roine' >      
+      <HashRouter basename = '/' >      
          <Menu />
         <Routes>
           <Route path="/" element={<FrontPage />} />
           <Route path="/scoreboard" element={<Scoreboard logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />          
           <Route path="/races" element={<ListRacesAsCards racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} />} />
-          <Route path="/results" element={<Results logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSetting={setRaceSettings} />} />
+          <Route path="/series" element={<Series  />} />
+        
           <Route path="/competitorlist" element={<Competitorlist racers={racers} setRacers={setRacers} raceSettings={raceSettings} />} />          
-          <Route path="/importrace" element={<Importrace />} />          
+          <Route path="/importrace" element={<Importrace />} />                    
+          <Route path="/admin/users" element={<AdminUsers />} />                    
+          <Route path="/admin/races" element={<AdminRaces />} />                    
+          <Route path="/admin/racelist" element={<AdminRacerlist />} />  
+          <Route path="/newresults/:raceid" element={<NewResults  />} />
+          <Route path="/profile/:userid" element={<Profilepage />} />                              
           <Route 
             path="/createrace"
             element={<Createrace racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} showMenu={false} />} />          
           <Route path="/scanner" element={<ScannerPage/>} />          
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </>
   );
 }
 
 export default App;
+
+//<Route path="/results" element={<Results logLaps={logLaps} setlogLaps={setlogLaps} racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSetting={setRaceSettings} />} />

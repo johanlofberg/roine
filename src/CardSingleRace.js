@@ -1,34 +1,21 @@
-import * as React from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import Avatar from '@mui/material/Avatar';
 import Card from '@mui/material/Card';
-import { Image } from 'react-bootstrap';
-import CardHeader from '@mui/material/CardHeader';
 import CardActionArea from '@mui/material/CardActionArea';
 import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
+import CardHeader from '@mui/material/CardHeader';
 import Collapse from '@mui/material/Collapse';
-import Avatar from '@mui/material/Avatar';
 import IconButton, { IconButtonProps } from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import { blue } from '@mui/material/colors';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { where, onSnapshot, query, collection, getFirestore, doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
-import { loadSingleDocument } from './Database';
-import { normalizeRacer } from './myUtilities';
+import { styled } from '@mui/material/styles';
+import { deleteDoc, doc, getDoc, getFirestore } from 'firebase/firestore';
+import {deleteRace} from './Database'
+import * as React from 'react';
 import { FaTrash } from 'react-icons/fa';
-import { deleteDoc } from "firebase/firestore";
-import GMK from './gmk.png'
-
-const fetchDocument = async (id) => {
-    const firestore = getFirestore()
-    const docRef = doc(firestore, 'racerlist', id)
-    const docSnap = await getDoc(docRef)
-    const data = docSnap.exists() ? docSnap.data() : null
-    if (data === null || data === undefined) return null
-    return { id, ...data }
-}
+import { Link as RouterLink } from 'react-router-dom';
+import { db } from './firebase';
+import GMK from './gmk.png';
+import { normalizeRacer } from './myUtilities';
 
 interface ExpandMoreProps extends IconButtonProps {
     expand: boolean;
@@ -45,31 +32,16 @@ const ExpandMore = styled((props: ExpandMoreProps) => {
     }),
 }));
 
-
-
 const CardSingleRace = (props) => {
 
-    async function deleteRace(race) {
-
-        const raceid = race.id
-        const racerlistid = race.racerlistid
-
-        const raceRef = doc(db, 'races', raceid)
-        deleteDoc(raceRef).then(() => { console.log("Entire race has been deleted successfully.") })
-
-        if (racerlistid) {
-            const listRef = doc(db, 'racerlist', racerlistid)
-            deleteDoc(listRef).then(() => { console.log("Entire racer list has been deleted successfully.") })
-        }
+    async function handleClickDeleteRace(race) {
+        deleteRace(race)
         props.setNeedsReload(true)
-
-//        console.log(props.raceList.IndexOf(raceid))
-
     }
-
 
     async function clickRace(e, race) {
 
+        /*
         if (race.racerlistid) {
             const docRefRacers = doc(db, "racerlist", race.racerlistid);
             try {
@@ -88,7 +60,7 @@ const CardSingleRace = (props) => {
             } catch (error) {
                 console.log(error)
             }
-        }
+        }*/
     }
 
     const [expanded, setExpanded] = React.useState(false);
@@ -99,8 +71,9 @@ const CardSingleRace = (props) => {
     return (
 
         < React.Fragment key={props.race.id} >
+            <Grid item xs={12} 
             <Card key={'card' + props.index} sx={{ width: '100%', ':hover': { boxShadow: 15 } }}>
-                <CardActionArea component={RouterLink} to={'/Results'} onClick={(e) => clickRace(e, props.race)}>
+                <CardActionArea component={RouterLink} to='/newresults' state={props.race.id}>
                     <CardHeader
                         avatar={<Avatar alt="Apple" src={GMK} />}                                                                           
                         action={
@@ -121,11 +94,7 @@ const CardSingleRace = (props) => {
                         <IconButton
                             onTouchStart={(event) => event.stopPropagation()}
                             onMouseDown={(event) => event.stopPropagation()}
-                            // id={'roptionicon' + racer.id}                                
-                            //aria-controls={open ? 'racermenu' + racer.id : undefined}
-                            // aria-haspopup="true"
-                            // aria-expanded={open ? 'true' : undefined}
-                            onClick={(event) => { event.stopPropagation(); event.preventDefault(); deleteRace(props.race) }}
+                            onClick={(event) => { event.stopPropagation(); event.preventDefault(); handleClickDeleteRace(props.race) }}
                             size='small'>
                             < FaTrash />
                         </IconButton>
@@ -138,11 +107,7 @@ const CardSingleRace = (props) => {
                     </Collapse>
                 </CardActionArea>
             </Card>
-
-
-
         </React.Fragment>
-
     )
 }
 

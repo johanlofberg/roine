@@ -1,12 +1,12 @@
-import { Fragment, useState, useEffect } from 'react';
-import { getFirestore, collection, doc, addDoc, setDoc, getDocs } from "firebase/firestore";
+import { Grid } from '@mui/material';
+import { collection, getDocs } from "firebase/firestore";
+import { Fragment, useEffect, useState } from 'react';
+import CardSingleRaceNew from './CardSingleRaceNew';
 import { db } from './firebase';
-import { Button } from '@mui/material';
-import CardSingleRace from './CardSingleRace';
 
 const ListRacesAsCards = (props) => {
 
-    const [raceList, setRaceList] = useState([])
+    const [allAvailableRaces, setAllAvailableRaces] = useState([])
     const [needsReload,setNeedsReload] = useState(false)
 
     useEffect(() => { console.log('Useeffect in racelistcards');fetchRaces() }, [db,needsReload]);
@@ -16,7 +16,7 @@ const ListRacesAsCards = (props) => {
             .then((querySnapshot) => {
                 const newData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
                 console.log('Loaded races!');
-                setRaceList(newData)
+                setAllAvailableRaces(newData)
                 console.log(newData);
                 setNeedsReload(false)
             }
@@ -24,9 +24,11 @@ const ListRacesAsCards = (props) => {
     }
 
     return (
-        <Fragment key='racelist'>
-            {raceList.map((aRace, index) => { return <CardSingleRace needsReload = {needsReload} setNeedsReload={setNeedsReload} racers={props.racers} setRacers={props.setRacers} raceSettings={props.raceSettings} setRaceSettings={props.setRaceSettings} index={index} race={aRace} /> })}
-        </Fragment>
+        <>
+            <Grid container paddingTop={'1rem'} spacing={1} justifyContent="left" alignItems="left">
+            {allAvailableRaces.map((aRace, index) => { return <CardSingleRaceNew raceID={aRace.id} needsReload = {needsReload} setNeedsReload={setNeedsReload} racers={props.racers} setRacers={props.setRacers} raceSettings={props.raceSettings} setRaceSettings={props.setRaceSettings} index={index} race={aRace} /> })}
+            </Grid>
+        </>
     )
 }
 

@@ -1,4 +1,7 @@
 import "bootstrap/dist/css/bootstrap.min.css";
+
+import CSVDownloadButton from "./CSVDownloadButton";
+
 import React, { useEffect, useState } from 'react';
 //import {Card,CardHeader} from 'react-bootstrap';
 // I tidig variant header från mui och card from react
@@ -605,7 +608,6 @@ export default function Scoreboard(props) {
         }
     }
 
-
     const [count, setCount] = useState(0);
     
     const location = useLocation();
@@ -648,8 +650,10 @@ export default function Scoreboard(props) {
 
     return (
         <>
-            <h1>{NFCReadMessage}</h1>
+        {NFCReadMessage ? <h1>  {NFCReadMessage}   </h1>: ''}                          
+       
             <AppBar position="static">
+            <CSVDownloadButton racers={allCompetitors}/>
                 <Toolbar sx={{ justifyContent: "space-between" }}>
                     <ButtonGroup>
                         <Box>

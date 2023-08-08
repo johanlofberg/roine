@@ -34,9 +34,31 @@ export function uniqueID(length = 8) {
     return s;
 }
 
-export function normalizeRacer(racer,dodate = false) {
-    
+
+function check(obj, key, defaultValue) {
+    if (!obj[key]) {
+        obj[key] = defaultValue;
+    }
+}
+
+export function normalizeRace(Race) {
+    if (Race) {
+        check(Race, 'logid', '')
+        check(Race, 'eventorganizer', '')
+        check(Race, 'racerlistid', '')
+        check(Race, 'seriesid', '')
+        check(Race, 'results', [])
+        check(Race, 'location', '')
+    }
+    return Race
+};
+
+export function normalizeRacer(racer, dodate = false) {
+
     let e = racer
+    if (!e.hasOwnProperty('familyname')) { e.familyname = '' }
+    if (!e.hasOwnProperty('givenname')) { e.givenname = '' }
+    if (!e.hasOwnProperty('name')) { e.givenname = e.givenname + ' ' + e.familyname}
     if (!e.hasOwnProperty('id')) { e.id = uniqueID() }
     if (!e.hasOwnProperty('rfid')) { e.rfid = '' }
     if (!e.hasOwnProperty('dns')) { e.dns = false }
@@ -44,20 +66,49 @@ export function normalizeRacer(racer,dodate = false) {
     if (!e.hasOwnProperty('finished')) { e.finished = false }
     if (!e.hasOwnProperty('lapmarkings')) { e.lapmarkings = [] }
     if (!e.hasOwnProperty('next')) { e.next = 999 }
+    if (!e.hasOwnProperty('participatedin')) { e.participatedin = [] }    
+    
     if (dodate) {
         console.log('Normalizing racer dates')
         for (let index = 0; index < e.lapmarkings.length; index++) {
             e.lapmarkings[index].time = e.lapmarkings[index].time.toDate()
             console.log(e)
         }
-    }    
+    }
     return e
 };
 
 export function normalizeRacers(racers) {
-
     if (racers) {
         console.log(racers)
         return racers.map((e) => normalizeRacer(e))
-    } else {return []}
+    } else { return [] }
 };
+
+export function createProfileLink(id) {return `/profile/${id}`}
+export function createResultsLink(id) {return `/newresults/${id}`}
+
+//export function computePlacings(race,racerlist)
+
+export function isValidSerial(serial) {
+    // Remove any whitespace and convert the serial to uppercase
+    const formattedSerial = serial.replace(/\s/g, '').toUpperCase();
+  
+    // Check if the serial number has the correct format (xx:yy:zz:uu:vv:ww)
+    if (!/^[0-9A-F]{2}(:[0-9A-F]{2}){3,5}$/.test(formattedSerial)) {
+      return false;
+    }  
+    return true;
+  };
+  
+  export function capitalizeFirstLetter(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  export function matlabsort(arr) {
+    const indices = [...arr.keys()];
+    const sorted = [...arr].sort((a, b) => b - a)
+    const sortedIndices = indices.sort((a, b) => arr[b] - arr[a]);
+    return [sorted, sortedIndices]
+  }
