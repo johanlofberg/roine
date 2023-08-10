@@ -9,10 +9,29 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import CardSingleRaceNew from './CardSingleRaceNew';
-import { saveUserToDataBase } from './Database';
+import { loadSingleRaceById, loadSingleRacerByID, saveUserToDataBase } from './Database';
 import { db } from './firebase';
-import { deepClone, isValidSerial } from './myUtilities';
+import { createResultsLink, deepClone, isValidSerial } from './myUtilities';
+import PhoneIcon from '@mui/icons-material/Phone';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import PersonPinIcon from '@mui/icons-material/PersonPin';
+import PhoneMissedIcon from '@mui/icons-material/PhoneMissed';
+import ListIcon from '@mui/icons-material/List';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import Table from '@mui/material/Table';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TableBody from '@mui/material/TableBody';
+import TableContainer from '@mui/material/TableContainer';
+import '@fontsource/roboto/300.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/500.css';
+import '@fontsource/roboto/700.css';
+import { Link } from 'react-router-dom';
 
+import { Tab } from '@mui/material';
+import { Tabs } from '@mui/material';
 export default function Profilepage() {
 
   function onClickSave() {
@@ -28,6 +47,8 @@ export default function Profilepage() {
   const [nfcState, setnfcState] = useState('unavail');
   const [needsReload, setNeedsReload] = useState(true);
   const [dataWasLoaded, setDataWasLoaded] = useState(false);
+  const [viewSelected, setViewSelected] = useState(0);
+  const [anythingChanged, setAnythingChanged] = useState(false)
 
   async function ScannerWorker() {
     try {
@@ -36,7 +57,7 @@ export default function Profilepage() {
       await ndef.scan().then(() => {
         console.log("Scan started successfully.");
         ndef.onreadingerror = (event) => { console.log("Error! Cannot read data from the NFC tag.",); };
-        ndef.onreading = async ({ message, serialNumber }) => { setNFCReadMessage(serialNumber); setnfcState('free'); await new Promise((resolve) => setTimeout(resolve, 1000)); };
+        ndef.onreading = async ({ message, serialNumber }) => { setAnythingChanged(true);setNFCReadMessage(serialNumber); setnfcState('free'); await new Promise((resolve) => setTimeout(resolve, 1000)); };
       }).catch((error) => {
         setnfcState('error');
       });
@@ -55,22 +76,30 @@ export default function Profilepage() {
     if (racerID && racerID.length) {
       const fetchDataInSeries = async () => {
         try {
-          let userData = []
-          const userRef = doc(db, 'racers', racerID);
-          const snapshot = await getDoc(userRef);
-          if (snapshot.exists) {
-            userData = snapshot.data();
-          }
+          /*
+            let userData = []
+            const userRef = doc(db, 'racers', racerID);
+            const snapshot = await getDoc(userRef);
+            if (snapshot.exists) {
+              userData = snapshot.data();
+            }
+            */
+
+          const userData = await loadSingleRacerByID(racerID)
+
           console.log('Loaded user info', userData)
           let raceList = []
-          for (const docId of userData.participatedin) {
-            const raceRef = doc(db, 'races', docId);
+          let raceData = []
+          for (const docID of userData.participatedin) {
+            raceData = await loadSingleRaceById(docID)
+            if (raceData) { raceList = [...raceList, raceData] }
+            /*const raceRef = doc(db, 'races', docID);
             const snapshot = await getDoc(raceRef);
             if (snapshot.exists) {
               const raceData = snapshot.data();
               raceList = [...raceList, raceData]
             }
-            console.log('Loaded races', raceList)
+            console.log('Loaded races', raceList)*/
           }
           setRacer(userData)
           setAllAvailableRaces(raceList);
@@ -93,6 +122,71 @@ export default function Profilepage() {
   }, [NFCReadMessage, needsReload])
 
 
+
+  function findResult(race, racer) {
+    let pos = ''
+    console.log(race,racer)
+    for (let index = 0; index < race.results.length; index++) {
+      pos = race.results[index].results.indexOf(racer.id)
+      if (pos > -1) {
+        return [pos+1, race.results[index].class]
+        break
+      }      
+    }
+    return [null, null]
+  }
+
+  function tableResults(races, racer) {
+
+    console.clear()
+    let results = []
+    let place = 0
+    let className = ''
+    for (let index = 0; index < races.length; index++) {
+        [place, className] = findResult(races[index], racer)
+        results = [...results, {
+          id: races[index].id,
+          name:races[index].name, 
+          date:races[index].date, 
+          class: className, 
+          place: place}]        
+    }
+
+    results.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateB - dateA;
+    });
+
+    return (
+      <TableContainer component={Paper}>
+        <Table >
+      <TableHead>
+        <TableRow>
+          <TableCell align="right">Tävling</TableCell>
+          <TableCell align="right">Datum</TableCell>
+          <TableCell align="right">Klass</TableCell>
+          <TableCell align="right">Placering</TableCell>          
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {results.map((row) =>  <TableRow
+              key={row.name}
+              sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+            >
+          <TableCell component="th" scope="row" align="right">
+         <Link style={{textDecoration: 'none'}} to={createResultsLink(row.id)} >{row.name}</Link>                      
+            
+            </TableCell>
+          <TableCell align="right">{row.date}</TableCell>
+          <TableCell align="right">{row.class}</TableCell>
+          <TableCell align="right">{row.place}</TableCell>
+        </TableRow>)}
+      </TableBody>
+    </Table></TableContainer>)
+  }
+
+
   return (
     <>
       <Container >
@@ -101,7 +195,7 @@ export default function Profilepage() {
             <Paper>
               <TextField
                 key='givenname'
-                onChange={(e) => setRacer({ ...racer, givenname: e.target.value })}
+                onChange={(e) => {setAnythingChanged(true);setRacer({ ...racer, givenname: e.target.value })}}
                 required
                 value={(racer && racer.givenname) || ''}
                 id="givenname"
@@ -118,7 +212,7 @@ export default function Profilepage() {
             <Paper>
               <TextField
                 key='familyname'
-                onChange={(e) => setRacer({ ...racer, familyname: e.target.value })}
+                onChange={(e) => {setAnythingChanged(true);setRacer({ ...racer, familyname: e.target.value })}}
                 value={(racer && racer.familyname) || ''}
                 id="familyname"
                 name="familyname"
@@ -139,7 +233,8 @@ export default function Profilepage() {
                     e.preventDefault();
                   } else {
                     setRacer({ ...racer, yob: e.target.value })
-                  }
+                    setAnythingChanged(true);
+                  }                  
                 }}
                 value={(racer && racer.yob) || ''}
                 id="yearofbirt"
@@ -162,7 +257,7 @@ export default function Profilepage() {
                 title="Om du använder en NFC-kapabel telefon eller liknande kan du placera denna över en RFID-tag och läsa in serienumret"
               >
                 <TextField
-                  onChange={(e) => setRacer({ ...racer, rfid: e.target.value })}
+                  onChange={(e) =>{setAnythingChanged(true); setRacer({ ...racer, rfid: e.target.value })}}
                   id="nfc"
                   name="nfc"
                   label={(nfcState === 'unavail' ? 'NFC-läsare ej tillgänglig' : (nfcState === 'avail' || nfcState === 'free' || nfcState === 'scanning') ? 'Placera din tag vid din NFC-läsare' : 'Något gick snett i din NFC-läsare')}
@@ -186,16 +281,26 @@ export default function Profilepage() {
             </Paper>
           </Grid>
 
-          <Grid item xs={12} sm={12}>
+        
+        { (anythingChanged==true) ?  
+        <Grid item xs={12} sm={12}>
             <Paper>
               <Button onClick={onClickSave} variant="contained" fullWidth color='primary'>Spara</Button>
             </Paper>
-          </Grid>
+          </Grid>: ''}
+        </Grid> 
 
+        <Grid item xs={12}>
+          <Tabs value={viewSelected} onChange={(e, index) => setViewSelected(index)}>
+            <Tab icon={<DashboardIcon />} label="" />
+            <Tab icon={<ListIcon />} label="" />
+          </Tabs>
         </Grid>
 
         <Grid container paddingTop={'1rem'} spacing={1} justifyContent="left" alignItems="left">
-          {allAvailableRaces.map((aRace, index) => { return <CardSingleRaceNew raceID={aRace.id} /> })}
+          {(viewSelected === 0) ? allAvailableRaces.map((aRace, index) => { return <CardSingleRaceNew raceID={aRace.id} /> }) : ''}
+
+          {(viewSelected === 1) ? tableResults(allAvailableRaces, racer) : ''}
         </Grid>
       </Container>
     </>

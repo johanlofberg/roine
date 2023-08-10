@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { DataGrid } from "@mui/x-data-grid";
 import { Button } from "@mui/material";
 import { loadAllUsers, deleteUserByID } from "./Database";
-import { deepClone, createProfileLink } from "./myUtilities";
+import { deepClone, proposeCSVDownload } from "./myUtilities";
+
 
 export default function AdminUsers() {
 
@@ -57,10 +58,9 @@ export default function AdminUsers() {
 
 
     return (
-        <React.Fragment>
-            {(racers && racers.length > 0) ? <Button as={Link} to={createProfileLink(racers[0].id)} >GO</Button> : ''}
-
-            <Button onClick={(e) => handleDeleteClick(e)}>  Delete selected  </Button>
+        <React.Fragment>              
+            {(racers && racers.length > 0) ? <Button onClick = {()=>proposeCSVDownload(racers,'races')}>Download</Button> : ''}                     
+            <Button onClick={(e) => handleDeleteClick(e)}>  Delete all  </Button>
             {racers && racers.length > 0 ? <DataGrid
                 checkboxSelection
                 columns={columns}

@@ -8,16 +8,22 @@ import { db } from './firebase';
 const Series = (props) => {
    
     const [allAvailableSeries, setAllAvailableSeries] = useState([])
-    
-    useEffect(() => { console.log('Useeffect in list series card');fetchData() }, [db]);
+    const [refresh, setRefresh] = useState(false)
+
+    useEffect(() => { 
+        console.log('Useeffect in list series card');
+        if (!refresh) {
+            fetchData()
+            setRefresh(true)
+        } 
+        }, [refresh]);
 
     const fetchData = async () => {
         await getDocs(collection(db, "series"))
             .then((querySnapshot) => {
                 const newData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
                 console.log('Loaded series!');
-                setAllAvailableSeries(newData)
-                console.log(newData);                
+                setAllAvailableSeries(newData)                
             }
             )              
     }

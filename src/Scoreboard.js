@@ -1,7 +1,5 @@
 import "bootstrap/dist/css/bootstrap.min.css";
-
 import CSVDownloadButton from "./CSVDownloadButton";
-
 import React, { useEffect, useState } from 'react';
 //import {Card,CardHeader} from 'react-bootstrap';
 // I tidig variant header från mui och card from react

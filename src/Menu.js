@@ -16,9 +16,11 @@ export default function Menu(props) {
             <Nav className="me-auto" >
               <NavDropdown title="Races" id="race-nav-dropdown">
                 <NavDropdown.Item className="text-decoration-none text-black" as={Link} to="/races">View all available races</NavDropdown.Item>
+                <NavDropdown.Item className="text-decoration-none text-black" as={Link} to="/series">View all available series</NavDropdown.Item>
                 <NavDropdown.Divider />
                 <NavDropdown.Item state={{ view: 'new' }} className="text-decoration-none text-black" as={Link} to="/createrace" >Create new race</NavDropdown.Item>
                 <NavDropdown.Item className="text-decoration-none text-black" as={Link} to="/importrace" >Import race</NavDropdown.Item>
+                <NavDropdown.Item className="text-decoration-none text-black" as={Link} to="/createserie" >Create series</NavDropdown.Item>
               </NavDropdown>
              
               <Nav.Link key = 'profilepg' eventkey="21" className="text-decoration-none text-white" as={Link} to="/profile">Profile</Nav.Link>
@@ -26,6 +28,7 @@ export default function Menu(props) {
               <Nav.Link  eventkey="22" className="text-decoration-none text-white" as={Link} to="/races">Races</Nav.Link>
 
               <Nav.Link  eventkey="23" className="text-decoration-none text-white" as={Link} to="/scoreboard">Scoreboard</Nav.Link>           
+              <Nav.Link  eventkey="23" className="text-decoration-none text-white" as={Link} to="/match">Match</Nav.Link>           
 
             </Nav>
             
@@ -62,6 +65,7 @@ export function Menuold(props) {
                 <NavDropdown.Divider />
                 <NavDropdown.Item state={{ view: 'new' }} className="text-decoration-none text-black" as={Link} to="/createrace" >Create new race</NavDropdown.Item>
                 <NavDropdown.Item className="text-decoration-none text-black" as={Link} to="/importrace" >Import race</NavDropdown.Item>
+                <NavDropdown.Item className="text-decoration-none text-black" as={Link} to="/createserie" >Create series</NavDropdown.Item>
               </NavDropdown>
               <NavDropdown title="Admin" id="race-nav-dropdown">
                 <NavDropdown.Item className="text-decoration-none text-black" as={Link} to="/admin/races">Races</NavDropdown.Item>
@@ -75,6 +79,11 @@ export function Menuold(props) {
               <Nav.Link>
                 <NavLink className="text-decoration-none text-white" to="/races">
                   Races
+                </NavLink>
+              </Nav.Link>
+              <Nav.Link>
+                <NavLink className="text-decoration-none text-white" to="/match">
+                  Match!
                 </NavLink>
               </Nav.Link>
               <Nav.Link>

@@ -7,9 +7,16 @@ import { db } from './firebase';
 const ListRacesAsCards = (props) => {
 
     const [allAvailableRaces, setAllAvailableRaces] = useState([])
-    const [needsReload,setNeedsReload] = useState(false)
+    const [needsReload, setNeedsReload] = useState(false)
+    const [refresh, setRefresh] = useState(false)
 
-    useEffect(() => { console.log('Useeffect in racelistcards');fetchRaces() }, [db,needsReload]);
+    useEffect(() => {
+        if (!refresh) {
+            console.log('Useeffect in racelistcards');
+            fetchRaces()
+            setRefresh(true)
+        }
+    }, [db, needsReload]);
 
     const fetchRaces = async () => {
         await getDocs(collection(db, "races"))
@@ -26,7 +33,7 @@ const ListRacesAsCards = (props) => {
     return (
         <>
             <Grid container paddingTop={'1rem'} spacing={1} justifyContent="left" alignItems="left">
-            {allAvailableRaces.map((aRace, index) => { return <CardSingleRaceNew raceID={aRace.id} needsReload = {needsReload} setNeedsReload={setNeedsReload} racers={props.racers} setRacers={props.setRacers} raceSettings={props.raceSettings} setRaceSettings={props.setRaceSettings} index={index} race={aRace} /> })}
+                {allAvailableRaces.map((aRace, index) => { return <CardSingleRaceNew raceID={aRace.id} needsReload={needsReload} setNeedsReload={setNeedsReload} racers={props.racers} setRacers={props.setRacers} raceSettings={props.raceSettings} setRaceSettings={props.setRaceSettings} index={index} race={aRace} /> })}
             </Grid>
         </>
     )

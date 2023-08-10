@@ -1,8 +1,6 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router-dom';
-import logo3 from './P1.jpg'
-import logo1 from './P2.jpg'
-import logo2 from './P3.jpg'
+
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function Carousel() {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Button } from "@mui/material";
 import { loadAllRacerList, deleteRacerListByID } from "./Database";
-import { deepClone } from "./myUtilities";
+import {proposeCSVDownload, deepClone } from "./myUtilities";
 
 export default function AdminRacerlist() {
 
@@ -46,7 +46,8 @@ export default function AdminRacerlist() {
 
     return (
         <React.Fragment>
-            <Button onClick={(e) => handleDeleteClick(e)}>  Delete selected  </Button>
+            {(racerList && racerList.length > 0) ? <Button onClick = {()=>proposeCSVDownload(racerList,'racelists')}>Download</Button> : ''}                     
+            <Button onClick={(e) => handleDeleteClick(e)}>  Delete all  </Button>
             {racerList && racerList.length > 0 ? <DataGrid
                 checkboxSelection
                 columns={columns}

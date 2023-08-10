@@ -1,59 +1,38 @@
-import { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, HashRouter, useLocation} from 'react-router-dom';
-import Home from './Home';
-import NewResults from './NewResults';
-import Scoreboard from './Scoreboard';
-import About from './About';
-import Menu from './Menu';
-import Contact from './Contact';
-import Createrace from './Createrace';
-import Importrace from './Importrace';
-import Competitorlist from './Competitorlist';
-import Createexampleusers from './Createexampleusers';
-import ListRacesAsCards from './ListRacesAsCards';
-import Createexamplerace from './Createexamplerace';
-import { getFirestore, collection, doc, addDoc, setDoc, getDocs } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
+import { useEffect, useRef, useState } from 'react';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import { db } from './firebase';
-import { saveRaceToDataBase,saveRacerListToDataBase } from './Database'
-import FrontPage from './FrontPage';
-import ScannerPage from './ScannerPage';
-import AdminUsers from './AdminUsers'
-import AdminRaces from './AdminRaces'
-import Profilepage from './Profilepage'
 import AdminRacerlist from './AdminRacerlist';
-import Series from './Series'
+import AdminRaces from './AdminRaces';
+import AdminUsers from './AdminUsers';
+import Competitorlist from './Competitorlist';
+import Createexamplerace from './Createexamplerace';
+import Createrace from './Createrace';
+import Createserie from './Createserie';
+import FrontPage from './FrontPage';
+import Importrace from './Importrace';
+import ListRacesAsCards from './ListRacesAsCards';
+import Menu from './Menu';
+import NewResults from './NewResults';
+import Profilepage from './Profilepage';
+import Result from './Result';
+import ScannerPage from './ScannerPage';
+import Scoreboard from './Scoreboard';
+import Series from './Series';
+import Match from "./Match";
+
 
 function App() {
 
-  const fetchRaces = async () => {
-    await getDocs(collection(db, "races"))
-      .then((querySnapshot) => {
-        const newData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
-        console.log('Loaded races!');
-        //setRaceList(newData)
-        console.log(newData);
-      })
-  }
-
-  // Load users
-  console.log('Loading users')
-
-  //let localracers = Createexampleusers();
-  // Set them ready to race
-  //localracers.map((x) => { x.next = 999; x.lapmarkings = [] });
-  //localracers.map((x) => { x.next = 999; x.dnf = false; x.dns = false; x.finished = false; x.lapmarkings = [] });
-  //const [racers, setRacers] = useState(localracers);
   const [racers, setRacers] = useState([]);
-  
-  console.log('App init')
-  console.log(racers)
-
+ 
   // Mock-up load of race
   const theRace = Createexamplerace();
   const [raceSettings, setRaceSettings] = useState(theRace);
   const [logLaps, setlogLaps] = useState([]);
 
-  const prevraceSettings = useRef(raceSettings);
+  /*
+ // const prevraceSettings = useRef(raceSettings);
   useEffect(() => {
     console.log('Entered useeffect')
     // Check if state of race has gone from running to finished, and if so save it
@@ -70,6 +49,7 @@ function App() {
     }
       prevraceSettings.current = raceSettings;
     }, [raceSettings]);
+*/
 
   return (
     <>
@@ -87,11 +67,20 @@ function App() {
           <Route path="/admin/races" element={<AdminRaces />} />                    
           <Route path="/admin/racelist" element={<AdminRacerlist />} />  
           <Route path="/newresults/:raceid" element={<NewResults  />} />
+          <Route path="/result/:raceid" element={<Result  />} />
           <Route path="/profile/:userid" element={<Profilepage />} />                              
+          <Route path="/createserie/:serieid" element={<Createserie />} />    v          
+          <Route path="/createserie/" element={<Createserie />} />    
+          <Route path="/createserie" element={<Createserie />} />    
+          <Route path="/match" element={<Match />} />    
+          <Route path="/match/:id" element={<Match />} />    
+          <Route path="/match/:id/:id" element={<Match />} />    
+
           <Route 
             path="/createrace"
             element={<Createrace racers={racers} setRacers={setRacers} raceSettings={raceSettings} setRaceSettings={setRaceSettings} showMenu={false} />} />          
           <Route path="/scanner" element={<ScannerPage/>} />          
+
         </Routes>
       </HashRouter>
     </>

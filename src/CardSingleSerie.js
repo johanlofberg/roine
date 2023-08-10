@@ -15,7 +15,7 @@ import { db } from './firebase';
 import GMK from './gmk.png';
 import Grid from '@mui/material/Grid';
 import { Link } from "react-router-dom";
-import { createResultsLink } from './myUtilities';
+import { createResultsLink, createSeriesLink } from './myUtilities';
 import { Chip } from '@mui/material';
 
 interface ExpandMoreProps extends IconButtonProps {
@@ -89,14 +89,15 @@ const CardSingleRaceNew = (props) => {
         <  React.Fragment key={theSerie.id} >
             <Grid item xs={12} sm={6} md={4} >
                 <Card key={'card' + serieID} sx={{ width: '100%', ':hover': { boxShadow: 15 } }}>
-                    <CardActionArea component={Link} to={createResultsLink(theSerie.id)}>
+                    <CardActionArea component={Link} to={createSeriesLink(theSerie.id)}>
                         <CardHeader
                             avatar={<Avatar src={GMK} />}
                             title={theSerie.name == undefined ? 'Okänt namn' : theSerie.name}
                             subheader=''
                         />
                         {theRaces.map( (aRace) => (<Chip 
-                        component={Link} to='/profile' clickable                        
+                        component={Link} to={createResultsLink(aRace.id)} 
+                        clickable                        
                         label = {aRace.name}
                         onClick = {(e) => {}}                        
                         ></Chip>))}

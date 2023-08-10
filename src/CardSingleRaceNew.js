@@ -15,7 +15,7 @@ import { db } from './firebase';
 import GMK from './gmk.png';
 import Grid from '@mui/material/Grid';
 import { Link } from "react-router-dom";
-import { createResultsLink } from './myUtilities';
+import { createResultsLink, createSeriesLink } from './myUtilities';
 import { Chip } from '@mui/material';
 
 interface ExpandMoreProps extends IconButtonProps {
@@ -87,7 +87,8 @@ const CardSingleRaceNew = (props) => {
                              seriesData = snapshotSeries.data();                            
                           }
                           console.log('Loaded series', seriesData)
-                          setTheSeries(seriesData)                        
+                          setTheSeries(seriesData)  
+                          console.log('SERIES',theSeries)                      
                     }                    
                 }
                 catch (error) { console.error('Error fetching data:', error); };
@@ -113,7 +114,12 @@ const CardSingleRaceNew = (props) => {
                                         ? 'Tävling genomförd'
                                         : 'Okänd status'}
                         />
-                        {theSeries?.name ? <Chip label = {theSeries.name}></Chip> : ''}
+                        {theSeries? (<Chip 
+                        component={Link} to={createSeriesLink(theSeries.id)} 
+                        clickable                        
+                        label = {theSeries.name}
+                        onClick = {(e) => {}}                        
+                        ></Chip>) : ''}
                         <Collapse key={'card2' + props.index} in={expanded} timeout="auto" unmountOnExit>
                             <CardContent key={'cardmore' + props.index}>
                                 {createStringAboutPlace()}

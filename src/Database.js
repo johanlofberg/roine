@@ -4,8 +4,7 @@ import { doc, setDoc, getDoc, getDocs, deleteDoc, collection } from "firebase/fi
 const arrayToObject = (array) =>
     array.reduce((obj, item) => {
         obj[item.id] = item
-        return obj
-    }, {})
+        return obj}, {})
 
 export async function loadAllRacerList() {
     const querySnapshot = await getDocs(collection(db, "racerlist"));
@@ -20,6 +19,12 @@ export async function loadAllUsers() {
 }
 export async function loadAllRaces() {
     const querySnapshot = await getDocs(collection(db, "races"));
+    const newData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+    return newData;
+}
+
+export async function loadAllSeries() {
+    const querySnapshot = await getDocs(collection(db, "series"));
     const newData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
     return newData;
 }
@@ -44,7 +49,7 @@ export async function loadSingleRacerListByID(id) {
     }
 }
 
-export async function loadSingleRacer(id) {
+export async function loadSingleRacerByID(id) {
     const docRef = doc(db, 'racers', id);
     try {
         const docSnap = await getDoc(docRef);
@@ -57,6 +62,16 @@ export async function loadSingleRacer(id) {
 
 export async function loadSingleRaceById(id) {
     const docRef = doc(db, 'races', id);
+    try {
+        const docSnap = await getDoc(docRef);
+        return docSnap.data()
+    } catch (error) {
+        return null
+    }
+}
+
+export async function loadSingleSerieById(id) {
+    const docRef = doc(db, 'series', id);
     try {
         const docSnap = await getDoc(docRef);
         return docSnap.data()
@@ -108,6 +123,21 @@ export const saveRaceToDataBase = async (theRace) => {
             .then(() => {
                 console.log('Race was been saved successfully');
             })
+        return true
+    }
+    catch (e) {
+        console.log(e);
+        return false
+    }
+};
+
+export const saveSerieToDataBase = async (theSerie) => {
+    try {
+        const docRef = doc(db, "series", theSerie.id);
+        await setDoc(docRef, theSerie)
+        //    .then(() => {
+         //       console.log('Race was been saved successfully');
+         //   })
         return true
     }
     catch (e) {

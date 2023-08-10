@@ -1,29 +1,24 @@
 import CheckIcon from '@mui/icons-material/Check';
 import UpLoadIcon from '@mui/icons-material/Upload';
-import Checkbox from '@mui/joy/Checkbox';
-import { Container } from '@mui/material';
+import { Autocomplete, Container, Grid } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
-import InputBase from '@mui/material/InputBase';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import { DataGrid } from '@mui/x-data-grid';
-import { collection, getDocs } from "firebase/firestore";
 import Papa from 'papaparse';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from "react-router-dom";
 import { stringSimilarity } from "string-similarity-js";
-import { saveRaceToDataBase, saveSeriesToDataBase, saveRacerListToDataBase, saveUserToDataBase } from './Database';
+import { loadAllSeries, loadAllUsers, saveRaceToDataBase, saveRacerListToDataBase, saveSeriesToDataBase, saveUserToDataBase } from './Database';
 import { db } from './firebase';
 import { capitalizeFirstLetter, deepClone, matlabsort, normalizeRace, uniqueID } from './myUtilities';
-import { Grid } from '@mui/material';
-import { Autocomplete } from '@mui/material';
-
+//import {DateTimeField} from '@mui/x-date-pickers';
 
 export default function Importrace() {
 
@@ -33,10 +28,13 @@ export default function Importrace() {
   const [eventName, setEventName] = useState('')
   const [eventOrganizer, setEventOrginazier] = useState('')
   const [eventComment, setEventComment] = useState('')
+  const [raceLocation, setRaceLocation] = useState([])
+
   const [raceDate, setRaceDate] = useState('')
   const [racers, setRacers] = useState([])
   const [oldSeries, setOldSeries] = useState('')
   const [selectedOldSeries, setSelectedOldSeries] = useState([])
+
 
   const [needsReload, setNeedsReload] = useState(true)
   const [selectionDetected, setSelectionDetected] = useState([])
@@ -56,14 +54,12 @@ export default function Importrace() {
     setImportedRace(clonedRacers)
   }
 
-
   const handleChangeDefaultClub = (event) => {
     setdefaultClub(event.target.value);
   };
 
   const handleChangeURL = (event) => {
-    setcsvLink(event.target.value);
-    console.log(event)
+    setcsvLink(event.target.value);    
   };
 
   const getOldSeriesLabel = (option) => option.name || '';
@@ -75,12 +71,6 @@ export default function Importrace() {
     } else {
     }
   }
-
-
-
-
-
-
 
   const handleClickURL = () => {
 
@@ -96,15 +86,9 @@ export default function Importrace() {
       skipEmptyLines: true,
       complete: function (results) {
         {
-          if (results) {
-            console.clear()
-            console.log('Coming in', results)
-            let converted = cleanUpImportedRaceParticipantList(results);
-
-            console.log('Cleaned up', converted)
-            converted = createFakeLapTimesOnImported(converted)
-
-            console.log('Faked up', converted)
+          if (results) {                        
+            let converted = cleanUpImportedRaceParticipantList(results);            
+            converted = createFakeLapTimesOnImported(converted)            
             if (converted[0]?.id) {
 
               let closeIndex = converted.map(() => []);
@@ -197,10 +181,11 @@ export default function Importrace() {
   function clearPage() {
     setImportedRace([])
     setSelectionDetected([])
+    setSelectedOldSeries([])
     setRaceDate('')
     setEventComment('')
     setEventName('')
-    setEventOrginazier([])
+    setEventOrginazier('')
   }
 
   const processRowUpdate = (newRow: any) => {
@@ -209,8 +194,7 @@ export default function Importrace() {
       // Nono, cannot edit that one. Show be stopped earlier....
       newRow.usematch = false
       return newRow
-    }
-    console.log(newRow)
+    }    
     const updatedRow = { ...newRow, isNew: false };
     let newData = deepClone(importedRace);
     var index = newData.map(function (e) { return e.id; }).indexOf(newRow.id);
@@ -229,13 +213,16 @@ export default function Importrace() {
     return x.class
   }
 
-  useEffect(() => {
-    console.log('Useeffect in import');
+  useEffect(() => {    
     if (needsReload) { fetchRacers() }
   },
     [db, needsReload]);
 
   const fetchRacers = async () => {
+
+    const racerData = await loadAllUsers()    
+    setRacers(racerData)      
+    /*
     await getDocs(collection(db, "racers"))
       .then((querySnapshot) => {
         const newData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
@@ -244,7 +231,13 @@ export default function Importrace() {
         console.log(newData);
         setNeedsReload(false)
       }
-      )
+      )*/
+
+    const seriesData = await loadAllSeries()    
+    setOldSeries(seriesData)
+    setNeedsReload(false)  
+    
+    /*
     await getDocs(collection(db, "series"))
       .then((querySnapshot) => {
         console.log('sdfs')
@@ -255,13 +248,12 @@ export default function Importrace() {
         setNeedsReload(false)
 
       }
-      )
+      )*/
   }
 
   function importToRoine() {
 
-    console.clear()
-    console.log(importedRace)
+    console.clear()    
     // We now have a racing list and a race, let's give them identifiers
     const raceListID = uniqueID()
     const raceID = uniqueID()
@@ -279,8 +271,7 @@ export default function Importrace() {
         racingList[index].matched = false
       }
     }
-    console.log('After updating match info', racingList)
-
+    
     // Find out given and family name  
     racingList.forEach((racer, index) => {
       const nameParts = racer.name.split(/\s+/);
@@ -332,11 +323,9 @@ export default function Importrace() {
     if (!racingList[0].numberoflaps && racingList[0].place) {
       // This is a race without any detailed info. All we have is the position
       race.classes.forEach((theClass) => {
-        theseMembers = racingList.filter((racer) => racer.class === theClass.name)
-        console.log(theseMembers)
+        theseMembers = racingList.filter((racer) => racer.class === theClass.name)        
         temp = [...theseMembers]
-        temp.sort((racer1, racer2) => (racer1.place - racer2.place))
-        console.log(temp)
+        temp.sort((racer1, racer2) => (racer1.place - racer2.place))        
         resultList = temp.map((racer) => racer.id)
         classResults.push({ class: theClass.name, results: resultList })
       })
@@ -344,8 +333,7 @@ export default function Importrace() {
       // Compute results list and save in race. This is a derived property but things
       // get a lot easier if we have this precomputed on stored races  
       //temp.sort((racer1,racer2) => (racer2.numberoflaps-racer1.numberoflaps) || (racer1.totaltimeinmilliseconds-racer2.totaltimeinmilliseconds));
-      //const resultList = temp.map((racer) => racer.id)
-      console.log('Computing results ************************')
+      //const resultList = temp.map((racer) => racer.id)      
       race.classes.forEach((theClass) => {
         theseMembers = racingList.filter((racer) => racer.class === theClass.name)
         temp = [...theseMembers]
@@ -353,8 +341,7 @@ export default function Importrace() {
         resultList = temp.map((racer) => racer.id)
         classResults.push({ class: theClass.name, results: resultList })
       })
-    }
-    console.log(classResults)
+    }    
     race.results = classResults
 
     // Some cleaning refactor this
@@ -368,11 +355,9 @@ export default function Importrace() {
 
     // If we added the race to a series, we must update the seris
     if (selectedOldSeries) {
-      if (selectedOldSeries?.eventid) {
-        console.log('ADDED')
+      if (selectedOldSeries?.eventid) {        
         selectedOldSeries.eventid = [...selectedOldSeries.eventid, raceID];
-      } else {
-        console.log('CREATED')
+      } else {        
         selectedOldSeries.eventid = [raceID];
       }
       saveSeriesToDataBase(selectedOldSeries)
@@ -551,13 +536,13 @@ export default function Importrace() {
         <Container>
           <Grid paddingTop={'0.9rem'} container spacing={1} justifyContent="left" alignItems="left">
 
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: '2px 4px', display: 'flex', alignItems: 'center', width: '100%' }}>
-                <InputBase
+            <Grid item xs={12}>
+              <Paper sx={{ p: '0px 0px', m: '0px 0px', display: 'flex', alignItems: 'left', width: '100%' }}>
+                <TextField 
                   onFocus={(e) => { e.target.select(); }}
                   onChange={handleChangeURL}
                   value={csvLink}
-                  sx={{ ml: 1, flex: 1 }}
+                  sx={{ m: 0, flex: 1 }}                  
                   placeholder="Download public google sheets CSV (supply link)"
                 />
                 <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
@@ -566,10 +551,6 @@ export default function Importrace() {
                 </IconButton>
               </Paper>
             </Grid>
-
-
-
-
 
             <Grid item xs={12}>
               <Paper >
@@ -595,19 +576,25 @@ export default function Importrace() {
 
             <Grid item xs={12} md={6}>
               <Paper>
-                <TextField width='100%' onChange={(e) => setEventName(e.target.value)} value={eventName} placeholder="Namn på tävling" />
+                <TextField fullWidth onChange={(e) => setEventName(e.target.value)} value={eventName} placeholder="Namn på tävling" />
               </Paper>
             </Grid>
 
             <Grid item xs={12} md={6}>
               <Paper >
-                <TextField type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} />
+                <TextField fullWidth type="date" format="dd/mm/yyyy" value={raceDate} onChange={e => setRaceDate(e.target.value)} />
               </Paper>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <Paper>
-                <Button onClick={importToRoine} disabled={importedRace.length == 0}>Import to Roine!</Button>
+            <Grid item xs={12} md={6} >
+              <Paper >
+                <TextField fullWidth placeholder="Plats" value={raceLocation} onChange={e => setRaceLocation(e.target.value)} />
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={6} item style={{display: 'flex'}}>
+              <Paper  style={{display: 'flex', width:'100%'}} >
+                <Button  style={{ width:'100%'}} overlay justifyContent={'center'} onClick={importToRoine} disabled={false && importedRace.length == 0}>Import to Roine!</Button>
               </Paper>
             </Grid>
 
